@@ -15,6 +15,7 @@
       --bar-bg: #1e1e1e;
       --border-color: #2e2e2e;
       --accent-color: #3b82f6;
+      --active-lock-color: #ef4444;
     }
 
     [data-theme="light"] {
@@ -23,6 +24,7 @@
       --bar-bg: #ffffff;
       --border-color: #e5e5e5;
       --accent-color: #2563eb;
+      --active-lock-color: #dc2626;
     }
 
     * {
@@ -42,9 +44,10 @@
       overflow: hidden;
       padding-top: env(safe-area-inset-top);
       padding-bottom: env(safe-area-inset-bottom);
+      -webkit-touch-callout: none;
     }
 
-    /* 1. THANH TRÊN CÙNG (TOP BAR): 4 nút icon cách đều */
+    /* TOP BAR */
     #top-bar {
       height: 48px;
       background: var(--bar-bg);
@@ -52,7 +55,7 @@
       display: flex;
       align-items: center;
       justify-content: space-around;
-      padding: 0 8px;
+      padding: 0 4px;
       flex-shrink: 0;
       z-index: 20;
     }
@@ -66,34 +69,64 @@
       background: transparent;
       border: none;
       color: var(--text-color);
-      font-size: 18px;
+      font-size: 17px;
       cursor: pointer;
       border-radius: 8px;
-      margin: 0 4px;
+      margin: 0 2px;
     }
 
     .top-btn:active {
       background: rgba(255, 255, 255, 0.08);
     }
 
+    .top-btn.locked {
+      color: var(--active-lock-color);
+      background: rgba(239, 68, 68, 0.15);
+    }
+
     input[type="file"] { display: none; }
 
-    /* 2. KHU VỰC HIỂN THỊ SÁCH */
+    /* KHU VỰC HIỂN THỊ SÁCH */
     #viewer-container {
       flex: 1;
       position: relative;
       width: 100%;
       height: 100%;
       overflow: hidden;
+      touch-action: pan-y;
+      -webkit-overflow-scrolling: touch;
     }
 
     #viewer {
       width: 100%;
       height: 100%;
-      transition: transform 0.15s ease-out;
+      overflow: hidden;
     }
 
-    /* 3. THANH DƯỚI CÙNG (BOTTOM BAR): Chỉnh cỡ chữ & font */
+    #viewer iframe {
+      overflow: hidden !important;
+      pointer-events: auto;
+    }
+
+    /* Toast thông báo */
+    #toast-msg {
+      position: absolute;
+      top: 56px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.85);
+      color: #fff;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      z-index: 99;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+    #toast-msg.show { opacity: 1; }
+
+    /* BOTTOM BAR */
     #bottom-bar {
       height: 52px;
       background: var(--bar-bg);
@@ -138,7 +171,7 @@
       outline: none;
     }
 
-    /* Popup dịch Bottom Sheet */
+    /* Popup Dịch */
     #translate-popup {
       display: none;
       position: fixed;
@@ -269,22 +302,21 @@
 </head>
 <body data-theme="dark">
 
-  <!-- TOP BAR: 4 nút cách đều -->
   <header id="top-bar">
     <label class="top-btn" for="epub-file-input" title="Mở file ePub">📂</label>
     <input type="file" id="epub-file-input" accept=".epub">
     
     <button class="top-btn" id="toc-btn" title="Mục lục">📑</button>
+    <button class="top-btn" id="page-lock-btn" title="Khóa/Mở lật trang">🔓</button>
     <button class="top-btn" id="theme-btn" title="Đổi giao diện Sáng/Tối">🌙</button>
     <button class="top-btn" id="settings-btn" title="Cài đặt API AI">⚙️</button>
   </header>
 
-  <!-- KHU VỰC ĐỌC SÁCH -->
   <div id="viewer-container">
+    <div id="toast-msg">Đã khóa lật trang</div>
     <div id="viewer"></div>
   </div>
 
-  <!-- BOTTOM BAR: Điều khiển Font & Cỡ chữ -->
   <footer id="bottom-bar">
     <select id="font-select">
       <option value="sans-serif">Không chân</option>
@@ -300,7 +332,6 @@
     </div>
   </footer>
 
-  <!-- Sidebar Mục lục -->
   <div id="toc-overlay"></div>
   <aside id="toc-sidebar">
     <div class="toc-header">
@@ -312,7 +343,6 @@
     </ul>
   </aside>
 
-  <!-- Bottom Sheet Dịch -->
   <div id="translate-popup">
     <div class="popup-header">
       <span>Dịch & Giải nghĩa Slang</span>
@@ -324,7 +354,6 @@
     </div>
   </div>
 
-  <!-- Modal Cài đặt API -->
   <div id="settings-modal">
     <div class="modal-box">
       <h3 style="font-size: 15px;">Cài đặt API AI</h3>
@@ -355,10 +384,16 @@
     let rendition = null;
     let selectedText = "";
 
+    let isPageLocked = false;
+    let isIntentionalNavigating = false;
+    let targetScrollX = 0;
+
     let currentFontSize = parseInt(localStorage.getItem('reader_font_size') || '100', 10);
     let currentFontFamily = localStorage.getItem('reader_font_family') || 'sans-serif';
 
     const fileInput = document.getElementById('epub-file-input');
+    const pageLockBtn = document.getElementById('page-lock-btn');
+    const toastMsg = document.getElementById('toast-msg');
     const popup = document.getElementById('translate-popup');
     const closePopupBtn = document.getElementById('close-popup');
     const textPreview = document.getElementById('selected-text-preview');
@@ -382,7 +417,25 @@
     const tocOverlay = document.getElementById('toc-overlay');
     const closeTocBtn = document.getElementById('close-toc');
     const tocList = document.getElementById('toc-list');
-    const viewerEl = document.getElementById('viewer');
+
+    function showToast(text) {
+      toastMsg.textContent = text;
+      toastMsg.classList.add('show');
+      setTimeout(() => toastMsg.classList.remove('show'), 1500);
+    }
+
+    pageLockBtn.addEventListener('click', () => {
+      isPageLocked = !isPageLocked;
+      if (isPageLocked) {
+        pageLockBtn.textContent = '🔒';
+        pageLockBtn.classList.add('locked');
+        showToast('Đã KHÓA lật trang');
+      } else {
+        pageLockBtn.textContent = '🔓';
+        pageLockBtn.classList.remove('locked');
+        showToast('Đã MỞ lật trang');
+      }
+    });
 
     // 1. IndexedDB
     function openDB() {
@@ -430,6 +483,7 @@
         li.textContent = item.label ? item.label.trim() : 'Chương không tên';
         li.addEventListener('click', () => {
           if (rendition) {
+            isIntentionalNavigating = true;
             rendition.display(item.href);
             closeTOC();
           }
@@ -446,30 +500,51 @@
     closeTocBtn.addEventListener('click', closeTOC);
     tocOverlay.addEventListener('click', closeTOC);
 
-    // 3. Xử lý vuốt lật trang (Swipe Gesture)
+    // 3. XỬ LÝ VUỐT TƯƠNG THÍCH HOÀN HẢO CHO CẢ SAFARI IOS VÀ ANDROID
     let touchStartX = 0;
     let touchStartY = 0;
+    let touchStartTime = 0;
 
-    function bindSwipeEvents(doc) {
-      doc.addEventListener('touchstart', (e) => {
-        touchStartX = e.changedTouches[0].screenX;
-        touchStartY = e.changedTouches[0].screenY;
+    function bindSwipeEvents(targetElement) {
+      targetElement.addEventListener('touchstart', (e) => {
+        if (e.touches && e.touches.length > 1) return;
+        const touch = e.touches ? e.touches[0] : e;
+        touchStartX = touch.clientX || touch.screenX;
+        touchStartY = touch.clientY || touch.screenY;
+        touchStartTime = Date.now();
       }, { passive: true });
 
-      doc.addEventListener('touchend', (e) => {
-        const diffX = e.changedTouches[0].screenX - touchStartX;
-        const diffY = e.changedTouches[0].screenY - touchStartY;
+      targetElement.addEventListener('touchend', (e) => {
+        if (isPageLocked) return;
 
-        // Chỉ lật trang khi vuốt ngang nhiều hơn vuốt dọc (tránh nhầm khi cuộn)
-        if (Math.abs(diffX) > 40 && Math.abs(diffX) > Math.abs(diffY)) {
+        // Bỏ qua nếu người dùng đang có vùng bôi đen chữ
+        const sel = window.getSelection();
+        if (sel && sel.toString().trim().length > 0) return;
+
+        const duration = Date.now() - touchStartTime;
+        if (duration > 400) return; // Nhấn giữ lâu thì không lật trang
+
+        const touch = e.changedTouches ? e.changedTouches[0] : e;
+        const currentX = touch.clientX || touch.screenX;
+        const currentY = touch.clientY || touch.screenY;
+
+        const diffX = currentX - touchStartX;
+        const diffY = currentY - touchStartY;
+
+        // Ngưỡng vuốt nhạy cho Safari (từ 45px trở lên)
+        if (Math.abs(diffX) > 45 && Math.abs(diffX) > Math.abs(diffY) * 1.2) {
+          isIntentionalNavigating = true;
           if (diffX < 0) {
-            rendition && rendition.next(); // Vuốt sang trái -> Trang kế tiếp
+            rendition && rendition.next();
           } else {
-            rendition && rendition.prev(); // Vuốt sang phải -> Trang trước
+            rendition && rendition.prev();
           }
         }
       }, { passive: true });
     }
+
+    // Gắn swipe cho cả khung ngoài trên iOS
+    bindSwipeEvents(document.getElementById('viewer-container'));
 
     // 4. Render Sách
     function displayBookData(buffer, title, initialLocation = null) {
@@ -490,12 +565,44 @@
       book.loaded.navigation.then(nav => buildTOC(nav.toc));
 
       rendition.on('relocated', (loc) => {
+        isIntentionalNavigating = false;
+        setTimeout(() => {
+          const views = rendition.views();
+          if (views && views.length > 0) {
+            const v = views.find(item => item.displayed) || views[0];
+            if (v && v.window) {
+              targetScrollX = v.window.scrollX || (v.document && v.document.documentElement ? v.document.documentElement.scrollLeft : 0) || 0;
+            }
+          }
+        }, 50);
+
         if (loc && loc.start && loc.start.cfi) localStorage.setItem('last_book_cfi', loc.start.cfi);
       });
 
-      // Gắn sự kiện vuốt và bôi đen vào nội dung iframe của ePub
       rendition.hooks.content.register((contents) => {
-        bindSwipeEvents(contents.document);
+        const win = contents.window;
+        const doc = contents.document;
+
+        if (doc && doc.documentElement) {
+          doc.documentElement.style.overflowX = 'hidden';
+          doc.body.style.overflowX = 'hidden';
+          doc.body.style.webkitUserSelect = 'text';
+        }
+
+        const forceSnapBack = () => {
+          if (!isIntentionalNavigating) {
+            if (win.scrollX !== targetScrollX) win.scrollTo(targetScrollX, 0);
+            if (doc.documentElement && doc.documentElement.scrollLeft !== targetScrollX) {
+              doc.documentElement.scrollLeft = targetScrollX;
+            }
+          }
+        };
+
+        win.addEventListener('scroll', forceSnapBack, { passive: true });
+        doc.addEventListener('scroll', forceSnapBack, { passive: true });
+
+        // Gắn vuốt trực tiếp vào tài liệu trong iframe
+        bindSwipeEvents(doc);
       });
 
       rendition.on("selected", function (cfiRange) {
@@ -505,6 +612,21 @@
           if (text.length > 0) {
             selectedText = text;
             showTranslatePopup(text);
+
+            setTimeout(() => {
+              try {
+                const views = rendition.views();
+                views.forEach(v => {
+                  if (v.window && v.window.getSelection) {
+                    v.window.getSelection().removeAllRanges();
+                  }
+                  if (v.window) v.window.scrollTo(targetScrollX, 0);
+                  if (v.document && v.document.documentElement) {
+                    v.document.documentElement.scrollLeft = targetScrollX;
+                  }
+                });
+              } catch (err) {}
+            }, 60);
           }
         });
       });
