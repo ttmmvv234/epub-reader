@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>AI ePub Reader</title>
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
+
+  <style>
+    :root {
+      --bg-color: #121212;
+      --text-color: #d1d5db;
+      --bar-bg: #1e1e1e;
+      --border-color: #2e2e2e;
+      --accent-color: #3b82f6;
+    }
+
+    [data-theme="light"] {
+      --bg-color: #f7f6f2;
+      --text-color: #2b2b2b;
+      --bar-bg: #ffffff;
+      --border-color: #e5e5e5;
+      --accent-color: #2563eb;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    /* 1. THANH TRÊN CÙNG (TOP BAR): 4 nút icon cách đều */
+    #top-bar {
+      height: 48px;
+      background: var(--bar-bg);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      padding: 0 8px;
+      flex-shrink: 0;
+      z-index: 20;
+    }
+
+    .top-btn {
+      flex: 1;
+      height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: none;
+      color: var(--text-color);
+      font-size: 18px;
+      cursor: pointer;
+      border-radius: 8px;
+      margin: 0 4px;
+    }
+
+    .top-btn:active {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    input[type="file"] { display: none; }
+
+    /* 2. KHU VỰC HIỂN THỊ SÁCH */
+    #viewer-container {
+      flex: 1;
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    #viewer {
+      width: 100%;
+      height: 100%;
+      transition: transform 0.15s ease-out;
+    }
+
+    /* 3. THANH DƯỚI CÙNG (BOTTOM BAR): Chỉnh cỡ chữ & font */
+    #bottom-bar {
+      height: 52px;
+      background: var(--bar-bg);
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      flex-shrink: 0;
+      z-index: 20;
+    }
+
+    .bottom-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .stepper-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border-color);
+      color: var(--text-color);
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .stepper-btn:active {
+      background: var(--accent-color);
+      color: #fff;
+    }
+
+    #font-select {
+      background: var(--bg-color);
+      color: var(--text-color);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 6px 8px;
+      font-size: 13px;
+      outline: none;
+    }
+
+    /* Popup dịch Bottom Sheet */
+    #translate-popup {
+      display: none;
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: var(--bar-bg);
+      border-top: 1px solid var(--border-color);
+      border-radius: 16px 16px 0 0;
+      box-shadow: 0 -8px 24px rgba(0,0,0,0.5);
+      z-index: 120;
+      max-height: 55vh;
+      flex-direction: column;
+      padding-bottom: env(safe-area-inset-bottom);
+      animation: slideUp 0.2s ease-out;
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+
+    .popup-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--accent-color);
+    }
+
+    .popup-body {
+      padding: 0 16px 16px 16px;
+      overflow-y: auto;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    /* Sidebar Mục lục */
+    #toc-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 100;
+    }
+
+    #toc-sidebar {
+      position: fixed;
+      top: 0;
+      left: -85%;
+      width: 85%;
+      max-width: 320px;
+      height: 100vh;
+      background: var(--bar-bg);
+      z-index: 101;
+      display: flex;
+      flex-direction: column;
+      transition: left 0.25s ease-out;
+      box-shadow: 4px 0 15px rgba(0,0,0,0.3);
+    }
+
+    #toc-sidebar.open { left: 0; }
+
+    .toc-header {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 600;
+      font-size: 15px;
+    }
+
+    #toc-list {
+      flex: 1;
+      overflow-y: auto;
+      list-style: none;
+    }
+
+    .toc-item {
+      padding: 12px 16px;
+      font-size: 14px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      line-height: 1.4;
+    }
+
+    /* Modal Cài đặt */
+    #settings-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .modal-box {
+      background: var(--bar-bg);
+      padding: 18px;
+      border-radius: 10px;
+      width: 100%;
+      max-width: 340px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 13px;
+    }
+
+    .form-group input, .form-group select {
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-color);
+      color: var(--text-color);
+      outline: none;
+    }
+  </style>
+</head>
+<body data-theme="dark">
+
+  <!-- TOP BAR: 4 nút cách đều -->
+  <header id="top-bar">
+    <label class="top-btn" for="epub-file-input" title="Mở file ePub">📂</label>
+    <input type="file" id="epub-file-input" accept=".epub">
+    
+    <button class="top-btn" id="toc-btn" title="Mục lục">📑</button>
+    <button class="top-btn" id="theme-btn" title="Đổi giao diện Sáng/Tối">🌙</button>
+    <button class="top-btn" id="settings-btn" title="Cài đặt API AI">⚙️</button>
+  </header>
+
+  <!-- KHU VỰC ĐỌC SÁCH -->
+  <div id="viewer-container">
+    <div id="viewer"></div>
+  </div>
+
+  <!-- BOTTOM BAR: Điều khiển Font & Cỡ chữ -->
+  <footer id="bottom-bar">
+    <select id="font-select">
+      <option value="sans-serif">Không chân</option>
+      <option value="Georgia, serif">Georgia</option>
+      <option value="Merriweather, serif">Merriweather</option>
+      <option value="monospace">Máy chữ</option>
+    </select>
+
+    <div class="bottom-group">
+      <button class="stepper-btn" id="font-dec">A−</button>
+      <span id="font-size-text" style="font-size: 13px; font-weight: 600; min-width: 36px; text-align: center;">100%</span>
+      <button class="stepper-btn" id="font-inc">A+</button>
+    </div>
+  </footer>
+
+  <!-- Sidebar Mục lục -->
+  <div id="toc-overlay"></div>
+  <aside id="toc-sidebar">
+    <div class="toc-header">
+      <span>Mục lục cuốn sách</span>
+      <span id="close-toc" style="cursor: pointer; padding: 4px 8px;">✕</span>
+    </div>
+    <ul id="toc-list">
+      <li style="padding: 16px; font-size: 13px; color: #888;">Đang tải mục lục...</li>
+    </ul>
+  </aside>
+
+  <!-- Bottom Sheet Dịch -->
+  <div id="translate-popup">
+    <div class="popup-header">
+      <span>Dịch & Giải nghĩa Slang</span>
+      <span id="close-popup" style="cursor: pointer; padding: 0 4px; font-size: 16px;">✕</span>
+    </div>
+    <div class="popup-body">
+      <div id="selected-text-preview" style="font-style: italic; color: #9ca3af; margin-bottom: 8px;"></div>
+      <div id="translation-output" style="white-space: pre-line;"></div>
+    </div>
+  </div>
+
+  <!-- Modal Cài đặt API -->
+  <div id="settings-modal">
+    <div class="modal-box">
+      <h3 style="font-size: 15px;">Cài đặt API AI</h3>
+      <div class="form-group">
+        <label>Dịch vụ:</label>
+        <select id="ai-provider">
+          <option value="openai">OpenAI (ChatGPT)</option>
+          <option value="gemini">Google Gemini</option>
+        </select>
+      </div>
+      <div class="form-group" id="openai-key-group">
+        <label>OpenAI Key:</label>
+        <input type="password" id="openai-key" placeholder="sk-...">
+      </div>
+      <div class="form-group" id="gemini-key-group" style="display: none;">
+        <label>Gemini Key:</label>
+        <input type="password" id="gemini-key" placeholder="AIzaSy...">
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
+        <button class="stepper-btn" id="cancel-settings">Đóng</button>
+        <button class="stepper-btn" id="save-settings" style="background: var(--accent-color); color: white; border: none;">Lưu</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let book = null;
+    let rendition = null;
+    let selectedText = "";
+
+    let currentFontSize = parseInt(localStorage.getItem('reader_font_size') || '100', 10);
+    let currentFontFamily = localStorage.getItem('reader_font_family') || 'sans-serif';
+
+    const fileInput = document.getElementById('epub-file-input');
+    const popup = document.getElementById('translate-popup');
+    const closePopupBtn = document.getElementById('close-popup');
+    const textPreview = document.getElementById('selected-text-preview');
+    const translationOutput = document.getElementById('translation-output');
+    const themeBtn = document.getElementById('theme-btn');
+    const settingsBtn = document.getElementById('settings-btn');
+    const settingsModal = document.getElementById('settings-modal');
+    const saveSettingsBtn = document.getElementById('save-settings');
+    const cancelSettingsBtn = document.getElementById('cancel-settings');
+    const aiProviderSelect = document.getElementById('ai-provider');
+    const geminiKeyInput = document.getElementById('gemini-key');
+    const openaiKeyInput = document.getElementById('openai-key');
+    const geminiGroup = document.getElementById('gemini-key-group');
+    const openaiGroup = document.getElementById('openai-key-group');
+    const fontSelect = document.getElementById('font-select');
+    const fontDec = document.getElementById('font-dec');
+    const fontInc = document.getElementById('font-inc');
+    const fontSizeText = document.getElementById('font-size-text');
+    const tocBtn = document.getElementById('toc-btn');
+    const tocSidebar = document.getElementById('toc-sidebar');
+    const tocOverlay = document.getElementById('toc-overlay');
+    const closeTocBtn = document.getElementById('close-toc');
+    const tocList = document.getElementById('toc-list');
+    const viewerEl = document.getElementById('viewer');
+
+    // 1. IndexedDB
+    function openDB() {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open('EpubReaderDB', 1);
+        req.onupgradeneeded = (e) => {
+          const db = e.target.result;
+          if (!db.objectStoreNames.contains('books')) db.createObjectStore('books', { keyPath: 'id' });
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    async function saveBookToDB(fileName, buffer) {
+      const db = await openDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('books', 'readwrite');
+        tx.objectStore('books').put({ id: 'last_book', name: fileName, data: buffer });
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    }
+
+    async function loadLastBookFromDB() {
+      const db = await openDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('books', 'readonly');
+        const req = tx.objectStore('books').get('last_book');
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    // 2. Mục lục
+    function buildTOC(tocItems) {
+      tocList.innerHTML = '';
+      if (!tocItems || tocItems.length === 0) {
+        tocList.innerHTML = '<li style="padding: 16px; font-size: 13px; color: #888;">Không có mục lục.</li>';
+        return;
+      }
+      function appendItem(item) {
+        const li = document.createElement('li');
+        li.className = 'toc-item';
+        li.textContent = item.label ? item.label.trim() : 'Chương không tên';
+        li.addEventListener('click', () => {
+          if (rendition) {
+            rendition.display(item.href);
+            closeTOC();
+          }
+        });
+        tocList.appendChild(li);
+        if (item.subitems && item.subitems.length > 0) item.subitems.forEach(appendItem);
+      }
+      tocItems.forEach(appendItem);
+    }
+
+    function openTOC() { tocSidebar.classList.add('open'); tocOverlay.style.display = 'block'; }
+    function closeTOC() { tocSidebar.classList.remove('open'); tocOverlay.style.display = 'none'; }
+    tocBtn.addEventListener('click', openTOC);
+    closeTocBtn.addEventListener('click', closeTOC);
+    tocOverlay.addEventListener('click', closeTOC);
+
+    // 3. Xử lý vuốt lật trang (Swipe Gesture)
+    let touchStartX = 0;
+    let touchStartY = 0;
+
+    function bindSwipeEvents(doc) {
+      doc.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+        touchStartY = e.changedTouches[0].screenY;
+      }, { passive: true });
+
+      doc.addEventListener('touchend', (e) => {
+        const diffX = e.changedTouches[0].screenX - touchStartX;
+        const diffY = e.changedTouches[0].screenY - touchStartY;
+
+        // Chỉ lật trang khi vuốt ngang nhiều hơn vuốt dọc (tránh nhầm khi cuộn)
+        if (Math.abs(diffX) > 40 && Math.abs(diffX) > Math.abs(diffY)) {
+          if (diffX < 0) {
+            rendition && rendition.next(); // Vuốt sang trái -> Trang kế tiếp
+          } else {
+            rendition && rendition.prev(); // Vuốt sang phải -> Trang trước
+          }
+        }
+      }, { passive: true });
+    }
+
+    // 4. Render Sách
+    function displayBookData(buffer, title, initialLocation = null) {
+      if (book) book.destroy();
+
+      book = ePub(buffer);
+      rendition = book.renderTo("viewer", {
+        width: "100%",
+        height: "100%",
+        spread: "none",
+        flow: "paginated"
+      });
+
+      if (initialLocation) rendition.display(initialLocation);
+      else rendition.display();
+
+      applyEpubTheme(document.body.getAttribute('data-theme'));
+      book.loaded.navigation.then(nav => buildTOC(nav.toc));
+
+      rendition.on('relocated', (loc) => {
+        if (loc && loc.start && loc.start.cfi) localStorage.setItem('last_book_cfi', loc.start.cfi);
+      });
+
+      // Gắn sự kiện vuốt và bôi đen vào nội dung iframe của ePub
+      rendition.hooks.content.register((contents) => {
+        bindSwipeEvents(contents.document);
+      });
+
+      rendition.on("selected", function (cfiRange) {
+        book.getRange(cfiRange).then(function (range) {
+          if (!range) return;
+          const text = range.toString().trim();
+          if (text.length > 0) {
+            selectedText = text;
+            showTranslatePopup(text);
+          }
+        });
+      });
+    }
+
+    fileInput.addEventListener('change', function (e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const title = file.name.replace('.epub', '');
+      const reader = new FileReader();
+      reader.onload = async function (ev) {
+        const buf = ev.target.result;
+        await saveBookToDB(title, buf);
+        localStorage.removeItem('last_book_cfi');
+        displayBookData(buf, title);
+      };
+      reader.readAsArrayBuffer(file);
+    });
+
+    // 5. Typography & Theme
+    function applyTypography() {
+      if (!rendition) return;
+      rendition.themes.fontSize(`${currentFontSize}%`);
+      rendition.themes.font(currentFontFamily);
+    }
+
+    fontSelect.addEventListener('change', (e) => {
+      currentFontFamily = e.target.value;
+      localStorage.setItem('reader_font_family', currentFontFamily);
+      applyTypography();
+    });
+
+    fontDec.addEventListener('click', () => {
+      if (currentFontSize > 60) {
+        currentFontSize -= 10;
+        fontSizeText.textContent = `${currentFontSize}%`;
+        localStorage.setItem('reader_font_size', currentFontSize);
+        applyTypography();
+      }
+    });
+
+    fontInc.addEventListener('click', () => {
+      if (currentFontSize < 250) {
+        currentFontSize += 10;
+        fontSizeText.textContent = `${currentFontSize}%`;
+        localStorage.setItem('reader_font_size', currentFontSize);
+        applyTypography();
+      }
+    });
+
+    function applyEpubTheme(theme) {
+      if (!rendition) return;
+      if (theme === 'dark') {
+        rendition.themes.override('color', '#d1d5db');
+        rendition.themes.override('background', '#121212');
+      } else {
+        rendition.themes.override('color', '#2b2b2b');
+        rendition.themes.override('background', '#f7f6f2');
+      }
+      applyTypography();
+    }
+
+    themeBtn.addEventListener('click', () => {
+      const cur = document.body.getAttribute('data-theme');
+      const next = cur === 'dark' ? 'light' : 'dark';
+      document.body.setAttribute('data-theme', next);
+      localStorage.setItem('app_theme', next);
+      themeBtn.textContent = next === 'dark' ? '☀️' : '🌙';
+      applyEpubTheme(next);
+    });
+
+    // 6. Settings & API Dịch
+    function loadSettings() {
+      const provider = localStorage.getItem('ai_provider') || 'openai';
+      aiProviderSelect.value = provider;
+      geminiKeyInput.value = localStorage.getItem('gemini_api_key') || '';
+      openaiKeyInput.value = localStorage.getItem('openai_api_key') || '';
+      toggleKeyInputs(provider);
+
+      const savedTheme = localStorage.getItem('app_theme') || 'dark';
+      document.body.setAttribute('data-theme', savedTheme);
+      themeBtn.textContent = savedTheme === 'dark' ? '☀️' : '🌙';
+
+      fontSelect.value = currentFontFamily;
+      fontSizeText.textContent = `${currentFontSize}%`;
+    }
+
+    function toggleKeyInputs(provider) {
+      if (provider === 'gemini') {
+        geminiGroup.style.display = 'flex';
+        openaiGroup.style.display = 'none';
+      } else {
+        geminiGroup.style.display = 'none';
+        openaiGroup.style.display = 'flex';
+      }
+    }
+
+    aiProviderSelect.addEventListener('change', (e) => toggleKeyInputs(e.target.value));
+    settingsBtn.addEventListener('click', () => settingsModal.style.display = 'flex');
+    cancelSettingsBtn.addEventListener('click', () => settingsModal.style.display = 'none');
+    saveSettingsBtn.addEventListener('click', () => {
+      localStorage.setItem('ai_provider', aiProviderSelect.value);
+      localStorage.setItem('gemini_api_key', geminiKeyInput.value.trim());
+      localStorage.setItem('openai_api_key', openaiKeyInput.value.trim());
+      settingsModal.style.display = 'none';
+    });
+
+    function showTranslatePopup(text) {
+      textPreview.textContent = `"${text.length > 50 ? text.substring(0, 50) + '...' : text}"`;
+      translationOutput.textContent = "Đang tra cứu từ lóng & ngữ cảnh...";
+      popup.style.display = 'flex';
+      fetchTranslation(text);
+    }
+
+    closePopupBtn.addEventListener('click', () => popup.style.display = 'none');
+
+    async function fetchTranslation(text) {
+      const provider = localStorage.getItem('ai_provider') || 'openai';
+      const prompt = `Bạn là chuyên gia ngôn ngữ và dịch thuật văn học sang tiếng Việt.
+Phân tích đoạn text tiếng Anh sau (chú trọng slang/thành ngữ/cách nói tự nhiên):
+"${text}"
+
+Cấu trúc trả lời ngắn gọn:
+1. Dịch nghĩa ngữ cảnh (bản dịch mượt).
+2. Giải thích Slang / Thành ngữ (nếu có).`;
+
+      try {
+        if (provider === 'gemini') {
+          const key = localStorage.getItem('gemini_api_key');
+          if (!key) throw new Error("Chưa nhập Gemini Key.");
+          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${key}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+          });
+          const data = await res.json();
+          if (data.error) throw new Error(data.error.message);
+          translationOutput.textContent = data.candidates[0].content.parts[0].text;
+        } else {
+          const key = localStorage.getItem('openai_api_key');
+          if (!key) throw new Error("Chưa nhập OpenAI Key.");
+          const res = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${key}`
+            },
+            body: JSON.stringify({
+              model: 'gpt-4o-mini',
+              messages: [{ role: 'user', content: prompt }],
+              temperature: 0.3
+            })
+          });
+          const data = await res.json();
+          if (data.error) throw new Error(data.error.message);
+          translationOutput.textContent = data.choices[0].message.content;
+        }
+      } catch (err) {
+        translationOutput.innerHTML = `<span style="color: #ef4444; font-size: 13px;">⚠️ ${err.message}</span>`;
+      }
+    }
+
+    loadSettings();
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      try {
+        const cachedBook = await loadLastBookFromDB();
+        if (cachedBook && cachedBook.data) {
+          const savedCfi = localStorage.getItem('last_book_cfi');
+          displayBookData(cachedBook.data, cachedBook.name, savedCfi);
+        }
+      } catch (err) {
+        console.warn('Chưa có sách cache:', err);
+      }
+    });
+  </script>
+</body>
+</html>
