@@ -15,7 +15,7 @@
       --bar-bg: #1e1e1e;
       --border-color: #2e2e2e;
       --accent-color: #3b82f6;
-      --active-lock-color: #ef4444;
+      --lock-color: #ef4444;
     }
 
     [data-theme="light"] {
@@ -24,7 +24,7 @@
       --bar-bg: #ffffff;
       --border-color: #e5e5e5;
       --accent-color: #2563eb;
-      --active-lock-color: #dc2626;
+      --lock-color: #dc2626;
     }
 
     * {
@@ -44,7 +44,6 @@
       overflow: hidden;
       padding-top: env(safe-area-inset-top);
       padding-bottom: env(safe-area-inset-bottom);
-      -webkit-touch-callout: none;
     }
 
     /* TOP BAR */
@@ -80,7 +79,7 @@
     }
 
     .top-btn.locked {
-      color: var(--active-lock-color);
+      color: var(--lock-color);
       background: rgba(239, 68, 68, 0.15);
     }
 
@@ -93,25 +92,16 @@
       width: 100%;
       height: 100%;
       overflow: hidden;
-      touch-action: pan-y;
-      -webkit-overflow-scrolling: touch;
     }
 
     #viewer {
       width: 100%;
       height: 100%;
-      overflow: hidden;
     }
 
-    #viewer iframe {
-      overflow: hidden !important;
-      pointer-events: auto;
-    }
-
-    /* Toast thông báo */
     #toast-msg {
       position: absolute;
-      top: 56px;
+      top: 12px;
       left: 50%;
       transform: translateX(-50%);
       background: rgba(0, 0, 0, 0.85);
@@ -134,7 +124,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 16px;
+      padding: 0 12px;
       flex-shrink: 0;
       z-index: 20;
     }
@@ -142,14 +132,14 @@
     .bottom-group {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
     }
 
     .stepper-btn {
       background: rgba(255, 255, 255, 0.06);
       border: 1px solid var(--border-color);
       color: var(--text-color);
-      padding: 6px 14px;
+      padding: 6px 12px;
       border-radius: 6px;
       font-size: 14px;
       font-weight: 600;
@@ -308,8 +298,8 @@
     
     <button class="top-btn" id="toc-btn" title="Mục lục">📑</button>
     <button class="top-btn" id="page-lock-btn" title="Khóa/Mở lật trang">🔓</button>
-    <button class="top-btn" id="theme-btn" title="Đổi giao diện Sáng/Tối">🌙</button>
-    <button class="top-btn" id="settings-btn" title="Cài đặt API AI">⚙️</button>
+    <button class="top-btn" id="theme-btn" title="Đổi giao diện">🌙</button>
+    <button class="top-btn" id="settings-btn" title="Cài đặt AI">⚙️</button>
   </header>
 
   <div id="viewer-container">
@@ -318,6 +308,11 @@
   </div>
 
   <footer id="bottom-bar">
+    <div class="bottom-group">
+      <button class="stepper-btn" id="prev-page-btn">◀</button>
+      <button class="stepper-btn" id="next-page-btn">▶</button>
+    </div>
+
     <select id="font-select">
       <option value="sans-serif">Không chân</option>
       <option value="Georgia, serif">Georgia</option>
@@ -327,7 +322,7 @@
 
     <div class="bottom-group">
       <button class="stepper-btn" id="font-dec">A−</button>
-      <span id="font-size-text" style="font-size: 13px; font-weight: 600; min-width: 36px; text-align: center;">100%</span>
+      <span id="font-size-text" style="font-size: 12px; font-weight: 600; min-width: 34px; text-align: center;">100%</span>
       <button class="stepper-btn" id="font-inc">A+</button>
     </div>
   </footer>
@@ -382,11 +377,8 @@
   <script>
     let book = null;
     let rendition = null;
-    let selectedText = "";
-
     let isPageLocked = false;
-    let isIntentionalNavigating = false;
-    let targetScrollX = 0;
+    let isSelecting = false;
 
     let currentFontSize = parseInt(localStorage.getItem('reader_font_size') || '100', 10);
     let currentFontFamily = localStorage.getItem('reader_font_family') || 'sans-serif';
@@ -394,6 +386,8 @@
     const fileInput = document.getElementById('epub-file-input');
     const pageLockBtn = document.getElementById('page-lock-btn');
     const toastMsg = document.getElementById('toast-msg');
+    const prevPageBtn = document.getElementById('prev-page-btn');
+    const nextPageBtn = document.getElementById('next-page-btn');
     const popup = document.getElementById('translate-popup');
     const closePopupBtn = document.getElementById('close-popup');
     const textPreview = document.getElementById('selected-text-preview');
@@ -421,7 +415,7 @@
     function showToast(text) {
       toastMsg.textContent = text;
       toastMsg.classList.add('show');
-      setTimeout(() => toastMsg.classList.remove('show'), 1500);
+      setTimeout(() => toastMsg.classList.remove('show'), 1400);
     }
 
     pageLockBtn.addEventListener('click', () => {
@@ -429,13 +423,16 @@
       if (isPageLocked) {
         pageLockBtn.textContent = '🔒';
         pageLockBtn.classList.add('locked');
-        showToast('Đã KHÓA lật trang');
+        showToast('Đã KHÓA vuốt lật trang');
       } else {
         pageLockBtn.textContent = '🔓';
         pageLockBtn.classList.remove('locked');
-        showToast('Đã MỞ lật trang');
+        showToast('Đã MỞ vuốt lật trang');
       }
     });
+
+    prevPageBtn.addEventListener('click', () => rendition && rendition.prev());
+    nextPageBtn.addEventListener('click', () => rendition && rendition.next());
 
     // 1. IndexedDB
     function openDB() {
@@ -483,7 +480,6 @@
         li.textContent = item.label ? item.label.trim() : 'Chương không tên';
         li.addEventListener('click', () => {
           if (rendition) {
-            isIntentionalNavigating = true;
             rendition.display(item.href);
             closeTOC();
           }
@@ -500,40 +496,58 @@
     closeTocBtn.addEventListener('click', closeTOC);
     tocOverlay.addEventListener('click', closeTOC);
 
-    // 3. XỬ LÝ VUỐT TƯƠNG THÍCH HOÀN HẢO CHO CẢ SAFARI IOS VÀ ANDROID
+    // 3. XỬ LÝ CẢM ỨNG & CHỐNG TRÔI KHI BÔI ĐEN
     let touchStartX = 0;
     let touchStartY = 0;
     let touchStartTime = 0;
 
-    function bindSwipeEvents(targetElement) {
-      targetElement.addEventListener('touchstart', (e) => {
+    function attachTouchHandlers(contents) {
+      const doc = contents.document;
+      const win = contents.window;
+      let savedScrollLeft = 0;
+
+      // Ghi nhớ đúng vị trí trang hiện tại trước khi chạm
+      doc.addEventListener('touchstart', (e) => {
         if (e.touches && e.touches.length > 1) return;
         const touch = e.touches ? e.touches[0] : e;
-        touchStartX = touch.clientX || touch.screenX;
-        touchStartY = touch.clientY || touch.screenY;
+        touchStartX = touch.screenX;
+        touchStartY = touch.screenY;
         touchStartTime = Date.now();
+        isSelecting = false;
+
+        // Lưu vị trí khung nhìn của trang đang đọc
+        const container = doc.scrollingElement || doc.documentElement || doc.body;
+        savedScrollLeft = container ? container.scrollLeft : win.scrollX;
       }, { passive: true });
 
-      targetElement.addEventListener('touchend', (e) => {
+      // Khi người dùng bắt đầu bôi đen chữ: giữ nguyên vị trí trang đó, không cho Android tự cuộn lệch
+      doc.addEventListener('selectionchange', () => {
+        const sel = win.getSelection();
+        if (sel && sel.toString().trim().length > 0) {
+          isSelecting = true;
+          const container = doc.scrollingElement || doc.documentElement || doc.body;
+          if (container && container.scrollLeft !== savedScrollLeft) {
+            container.scrollLeft = savedScrollLeft;
+          }
+        }
+      });
+
+      doc.addEventListener('touchend', (e) => {
         if (isPageLocked) return;
 
-        // Bỏ qua nếu người dùng đang có vùng bôi đen chữ
-        const sel = window.getSelection();
-        if (sel && sel.toString().trim().length > 0) return;
+        const sel = win.getSelection();
+        if (isSelecting || (sel && sel.toString().trim().length > 0)) {
+          return;
+        }
 
         const duration = Date.now() - touchStartTime;
-        if (duration > 400) return; // Nhấn giữ lâu thì không lật trang
+        if (duration > 350) return;
 
         const touch = e.changedTouches ? e.changedTouches[0] : e;
-        const currentX = touch.clientX || touch.screenX;
-        const currentY = touch.clientY || touch.screenY;
+        const diffX = touch.screenX - touchStartX;
+        const diffY = touch.screenY - touchStartY;
 
-        const diffX = currentX - touchStartX;
-        const diffY = currentY - touchStartY;
-
-        // Ngưỡng vuốt nhạy cho Safari (từ 45px trở lên)
-        if (Math.abs(diffX) > 45 && Math.abs(diffX) > Math.abs(diffY) * 1.2) {
-          isIntentionalNavigating = true;
+        if (Math.abs(diffX) > 55 && Math.abs(diffX) > Math.abs(diffY) * 1.4) {
           if (diffX < 0) {
             rendition && rendition.next();
           } else {
@@ -542,9 +556,6 @@
         }
       }, { passive: true });
     }
-
-    // Gắn swipe cho cả khung ngoài trên iOS
-    bindSwipeEvents(document.getElementById('viewer-container'));
 
     // 4. Render Sách
     function displayBookData(buffer, title, initialLocation = null) {
@@ -555,7 +566,8 @@
         width: "100%",
         height: "100%",
         spread: "none",
-        flow: "paginated"
+        flow: "paginated",
+        manager: "default"
       });
 
       if (initialLocation) rendition.display(initialLocation);
@@ -565,68 +577,30 @@
       book.loaded.navigation.then(nav => buildTOC(nav.toc));
 
       rendition.on('relocated', (loc) => {
-        isIntentionalNavigating = false;
-        setTimeout(() => {
-          const views = rendition.views();
-          if (views && views.length > 0) {
-            const v = views.find(item => item.displayed) || views[0];
-            if (v && v.window) {
-              targetScrollX = v.window.scrollX || (v.document && v.document.documentElement ? v.document.documentElement.scrollLeft : 0) || 0;
-            }
-          }
-        }, 50);
-
-        if (loc && loc.start && loc.start.cfi) localStorage.setItem('last_book_cfi', loc.start.cfi);
+        if (loc && loc.start && loc.start.cfi) {
+          localStorage.setItem('last_book_cfi', loc.start.cfi);
+        }
       });
 
       rendition.hooks.content.register((contents) => {
-        const win = contents.window;
-        const doc = contents.document;
-
-        if (doc && doc.documentElement) {
-          doc.documentElement.style.overflowX = 'hidden';
-          doc.body.style.overflowX = 'hidden';
-          doc.body.style.webkitUserSelect = 'text';
-        }
-
-        const forceSnapBack = () => {
-          if (!isIntentionalNavigating) {
-            if (win.scrollX !== targetScrollX) win.scrollTo(targetScrollX, 0);
-            if (doc.documentElement && doc.documentElement.scrollLeft !== targetScrollX) {
-              doc.documentElement.scrollLeft = targetScrollX;
-            }
-          }
-        };
-
-        win.addEventListener('scroll', forceSnapBack, { passive: true });
-        doc.addEventListener('scroll', forceSnapBack, { passive: true });
-
-        // Gắn vuốt trực tiếp vào tài liệu trong iframe
-        bindSwipeEvents(doc);
+        attachTouchHandlers(contents);
       });
 
-      rendition.on("selected", function (cfiRange) {
+      rendition.on("selected", function (cfiRange, contents) {
         book.getRange(cfiRange).then(function (range) {
           if (!range) return;
           const text = range.toString().trim();
           if (text.length > 0) {
-            selectedText = text;
             showTranslatePopup(text);
 
+            // Xóa vùng chọn sau khi đã lấy được chữ để tắt menu hệ thống Android, tránh xô trang
             setTimeout(() => {
               try {
-                const views = rendition.views();
-                views.forEach(v => {
-                  if (v.window && v.window.getSelection) {
-                    v.window.getSelection().removeAllRanges();
-                  }
-                  if (v.window) v.window.scrollTo(targetScrollX, 0);
-                  if (v.document && v.document.documentElement) {
-                    v.document.documentElement.scrollLeft = targetScrollX;
-                  }
-                });
+                if (contents && contents.window && contents.window.getSelection) {
+                  contents.window.getSelection().removeAllRanges();
+                }
               } catch (err) {}
-            }, 60);
+            }, 100);
           }
         });
       });
@@ -757,7 +731,7 @@ Cấu trúc trả lời ngắn gọn:
         if (provider === 'gemini') {
           const key = localStorage.getItem('gemini_api_key');
           if (!key) throw new Error("Chưa nhập Gemini Key.");
-          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${key}`, {
+          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
