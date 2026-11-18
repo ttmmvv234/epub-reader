@@ -2,780 +2,1001 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>AI ePub Reader</title>
-  
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
-
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Bé Học Số & Chữ</title>
   <style>
-    :root {
-      --bg-color: #121212;
-      --text-color: #d1d5db;
-      --bar-bg: #1e1e1e;
-      --border-color: #2e2e2e;
-      --accent-color: #3b82f6;
-      --lock-color: #ef4444;
-    }
-
-    [data-theme="light"] {
-      --bg-color: #f7f6f2;
-      --text-color: #2b2b2b;
-      --bar-bg: #ffffff;
-      --border-color: #e5e5e5;
-      --accent-color: #2563eb;
-      --lock-color: #dc2626;
-    }
-
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      -webkit-tap-highlight-color: transparent;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
     }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background-color: var(--bg-color);
-      color: var(--text-color);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #FFDEE9 0%, #B5FFFC 100%);
       height: 100vh;
+      width: 100vw;
+      overflow: hidden;
       display: flex;
       flex-direction: column;
-      overflow: hidden;
-      padding-top: env(safe-area-inset-top);
-      padding-bottom: env(safe-area-inset-bottom);
-    }
-
-    /* TOP BAR */
-    #top-bar {
-      height: 48px;
-      background: var(--bar-bg);
-      border-bottom: 1px solid var(--border-color);
-      display: flex;
-      align-items: center;
-      justify-content: space-around;
-      padding: 0 4px;
-      flex-shrink: 0;
-      z-index: 20;
-    }
-
-    .top-btn {
-      flex: 1;
-      height: 38px;
-      display: flex;
-      align-items: center;
       justify-content: center;
-      background: transparent;
-      border: none;
-      color: var(--text-color);
-      font-size: 17px;
-      cursor: pointer;
-      border-radius: 8px;
-      margin: 0 2px;
+      align-items: center;
     }
 
-    .top-btn:active {
-      background: rgba(255, 255, 255, 0.08);
-    }
-
-    .top-btn.locked {
-      color: var(--lock-color);
-      background: rgba(239, 68, 68, 0.15);
-    }
-
-    input[type="file"] { display: none; }
-
-    /* KHU VỰC HIỂN THỊ SÁCH */
-    #viewer-container {
-      flex: 1;
-      position: relative;
+    .screen {
       width: 100%;
       height: 100%;
-      overflow: hidden;
-    }
-
-    #viewer {
-      width: 100%;
-      height: 100%;
-    }
-
-    #toast-msg {
-      position: absolute;
-      top: 12px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0, 0, 0, 0.85);
-      color: #fff;
-      padding: 6px 14px;
-      border-radius: 20px;
-      font-size: 12px;
-      z-index: 99;
-      pointer-events: none;
-      opacity: 0;
-      transition: opacity 0.25s ease;
-    }
-    #toast-msg.show { opacity: 1; }
-
-    /* BOTTOM BAR */
-    #bottom-bar {
-      height: 52px;
-      background: var(--bar-bg);
-      border-top: 1px solid var(--border-color);
       display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 12px;
-      flex-shrink: 0;
-      z-index: 20;
-    }
-
-    .bottom-group {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .stepper-btn {
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid var(--border-color);
-      color: var(--text-color);
-      padding: 6px 12px;
-      border-radius: 6px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-
-    .stepper-btn:active {
-      background: var(--accent-color);
-      color: #fff;
-    }
-
-    #font-select {
-      background: var(--bg-color);
-      color: var(--text-color);
-      border: 1px solid var(--border-color);
-      border-radius: 6px;
-      padding: 6px 8px;
-      font-size: 13px;
-      outline: none;
-    }
-
-    /* Popup Dịch */
-    #translate-popup {
-      display: none;
-      position: fixed;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: var(--bar-bg);
-      border-top: 1px solid var(--border-color);
-      border-radius: 16px 16px 0 0;
-      box-shadow: 0 -8px 24px rgba(0,0,0,0.5);
-      z-index: 120;
-      max-height: 55vh;
       flex-direction: column;
-      padding-bottom: env(safe-area-inset-bottom);
-      animation: slideUp 0.2s ease-out;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px;
     }
 
-    @keyframes slideUp {
-      from { transform: translateY(100%); }
-      to { transform: translateY(0); }
+    .hidden {
+      display: none !important;
     }
 
-    .popup-header {
+    /* ==================== MÀN HÌNH MENU CHÍNH ==================== */
+    #menu-screen {
+      justify-content: center;
+      gap: 20px;
+    }
+
+    .menu-header {
+      text-align: center;
+    }
+
+    .menu-title {
+      font-size: 34px;
+      font-weight: 900;
+      color: #FF4757;
+      text-shadow: 2px 2px 0px #fff, 4px 4px 0px rgba(0,0,0,0.08);
+      margin-bottom: 4px;
+    }
+
+    .menu-subtitle {
+      font-size: 16px;
+      font-weight: 600;
+      color: #555;
+    }
+
+    .menu-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      width: 100%;
+      max-width: 360px;
+    }
+
+    .category-card {
+      background: #fff;
+      border-radius: 26px;
+      padding: 16px 18px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      box-shadow: 0 10px 22px rgba(0,0,0,0.1);
+      border: 5px solid #fff;
+      cursor: pointer;
+      transition: transform 0.15s;
+    }
+
+    .category-card:active {
+      transform: scale(0.95);
+    }
+
+    .card-num {
+      background: linear-gradient(135deg, #FF9F43 0%, #FF5E7E 100%);
+      color: white;
+    }
+
+    .card-let {
+      background: linear-gradient(135deg, #1E90FF 0%, #2ED573 100%);
+      color: white;
+    }
+
+    .card-trace {
+      background: linear-gradient(135deg, #A55EEA 0%, #FF6B81 100%);
+      color: white;
+    }
+
+    .category-icon {
+      font-size: 42px;
+      background: rgba(255,255,255,0.25);
+      width: 72px;
+      height: 72px;
+      border-radius: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-weight: 900;
+      flex-shrink: 0;
+    }
+
+    .category-info h2 {
+      font-size: 24px;
+      font-weight: 900;
+      margin-bottom: 2px;
+    }
+
+    .category-info p {
+      font-size: 14px;
+      opacity: 0.92;
+      font-weight: 600;
+    }
+
+    /* ==================== THANH ĐIỀU KHIỂN CHUNG ==================== */
+    .top-bar {
+      width: 100%;
+      max-width: 600px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 10px 16px;
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--accent-color);
+      gap: 6px;
+      z-index: 10;
     }
 
-    .popup-body {
-      padding: 0 16px 16px 16px;
-      overflow-y: auto;
+    .pill-btn {
+      background: rgba(255, 255, 255, 0.92);
+      border: 2px solid #fff;
+      border-radius: 20px;
+      padding: 8px 12px;
       font-size: 14px;
-      line-height: 1.5;
+      font-weight: bold;
+      color: #333;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+      cursor: pointer;
+      transition: transform 0.1s;
     }
 
-    /* Sidebar Mục lục */
-    #toc-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.5);
-      z-index: 100;
+    .pill-btn:active {
+      transform: scale(0.95);
     }
 
-    #toc-sidebar {
+    .score-badge {
+      background: #FFD700;
+      color: #5C4000;
+      padding: 8px 14px;
+      border-radius: 20px;
+      font-weight: 800;
+      font-size: 15px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+
+    /* ==================== MÀN HÌNH ĐỌC & TÔ ==================== */
+    .card-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      max-width: 500px;
+    }
+
+    .display-card {
+      background: #ffffff;
+      width: 260px;
+      height: 260px;
+      border-radius: 40px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.12);
+      border: 8px solid #fff;
+      transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .display-card.pop {
+      transform: scale(1.12) rotate(2deg);
+    }
+
+    #target-char {
+      font-size: 125px;
+      font-weight: 900;
+      line-height: 1.05;
+      color: #FF5E7E;
+      text-shadow: 3px 3px 0px rgba(0,0,0,0.06);
+    }
+
+    #char-word {
+      font-size: 22px;
+      font-weight: 700;
+      color: #777;
+      margin-top: 8px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    /* Bảng vẽ tô số */
+    .trace-board {
+      background: #ffffff;
+      width: 280px;
+      height: 280px;
+      border-radius: 40px;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.12);
+      border: 8px solid #fff;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .trace-board.pop {
+      transform: scale(1.1);
+    }
+
+    #trace-canvas {
+      width: 100%;
+      height: 100%;
+      cursor: crosshair;
+      touch-action: none;
+    }
+
+    .progress-bar-wrap {
+      width: 220px;
+      height: 14px;
+      background: rgba(255,255,255,0.8);
+      border-radius: 10px;
+      margin-top: 12px;
+      overflow: hidden;
+      border: 2px solid #fff;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+    }
+
+    #trace-progress {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #FF9F43, #2ED573);
+      transition: width 0.1s;
+    }
+
+    .feedback-box {
+      margin-top: 16px;
+      min-height: 44px;
+      background: rgba(255, 255, 255, 0.85);
+      padding: 10px 20px;
+      border-radius: 25px;
+      font-size: 16px;
+      font-weight: 600;
+      color: #444;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+
+    .controls {
+      width: 100%;
+      max-width: 500px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 24px;
+      padding-bottom: 10px;
+      z-index: 10;
+    }
+
+    .action-btn {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      border: none;
+      background: #fff;
+      font-size: 28px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+      cursor: pointer;
+    }
+
+    .action-btn:active {
+      transform: scale(0.92);
+    }
+
+    .mic-btn {
+      width: 88px;
+      height: 88px;
+      border-radius: 50%;
+      border: 6px solid #fff;
+      background: #FF5E7E;
+      color: white;
+      font-size: 38px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      box-shadow: 0 10px 25px rgba(255, 94, 126, 0.45);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .mic-btn.listening {
+      background: #2ED573;
+      box-shadow: 0 0 0 12px rgba(46, 213, 115, 0.25);
+      animation: pulse 1.2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.08); }
+      100% { transform: scale(1); }
+    }
+
+    #confetti-canvas {
       position: fixed;
       top: 0;
-      left: -85%;
-      width: 85%;
-      max-width: 320px;
-      height: 100vh;
-      background: var(--bar-bg);
-      z-index: 101;
-      display: flex;
-      flex-direction: column;
-      transition: left 0.25s ease-out;
-      box-shadow: 4px 0 15px rgba(0,0,0,0.3);
-    }
-
-    #toc-sidebar.open { left: 0; }
-
-    .toc-header {
-      padding: 14px 16px;
-      border-bottom: 1px solid var(--border-color);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-weight: 600;
-      font-size: 15px;
-    }
-
-    #toc-list {
-      flex: 1;
-      overflow-y: auto;
-      list-style: none;
-    }
-
-    .toc-item {
-      padding: 12px 16px;
-      font-size: 14px;
-      border-bottom: 1px solid rgba(255,255,255,0.04);
-      line-height: 1.4;
-    }
-
-    /* Modal Cài đặt */
-    #settings-modal {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.6);
-      z-index: 200;
-      align-items: center;
-      justify-content: center;
-      padding: 16px;
-    }
-
-    .modal-box {
-      background: var(--bar-bg);
-      padding: 18px;
-      border-radius: 10px;
+      left: 0;
       width: 100%;
-      max-width: 340px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    .form-group {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      font-size: 13px;
-    }
-
-    .form-group input, .form-group select {
-      padding: 8px;
-      border-radius: 6px;
-      border: 1px solid var(--border-color);
-      background: var(--bg-color);
-      color: var(--text-color);
-      outline: none;
+      height: 100%;
+      pointer-events: none;
+      z-index: 99;
     }
   </style>
 </head>
-<body data-theme="dark">
+<body>
 
-  <header id="top-bar">
-    <label class="top-btn" for="epub-file-input" title="Mở file ePub">📂</label>
-    <input type="file" id="epub-file-input" accept=".epub">
-    
-    <button class="top-btn" id="toc-btn" title="Mục lục">📑</button>
-    <button class="top-btn" id="page-lock-btn" title="Khóa/Mở lật trang">🔓</button>
-    <button class="top-btn" id="theme-btn" title="Đổi giao diện">🌙</button>
-    <button class="top-btn" id="settings-btn" title="Cài đặt AI">⚙️</button>
-  </header>
+  <canvas id="confetti-canvas"></canvas>
 
-  <div id="viewer-container">
-    <div id="toast-msg">Đã khóa lật trang</div>
-    <div id="viewer"></div>
+  <!-- ==================== 1. MÀN HÌNH MENU CHÍNH ==================== -->
+  <div id="menu-screen" class="screen">
+    <div class="menu-header">
+      <div class="menu-title">BÉ VUI HỌC</div>
+      <div class="menu-subtitle">Chọn bài học cùng bé nhé!</div>
+    </div>
+
+    <div class="menu-cards">
+      <div class="category-card card-num" onclick="startGame('numbers')">
+        <div class="category-icon">123</div>
+        <div class="category-info">
+          <h2>Học Đọc Số</h2>
+          <p>Tập đọc các số từ 0 đến 10</p>
+        </div>
+      </div>
+
+      <div class="category-card card-let" onclick="startGame('letters')">
+        <div class="category-icon">ABC</div>
+        <div class="category-info">
+          <h2>Học Đọc Chữ</h2>
+          <p>Tập đọc bảng chữ cái A, B, C</p>
+        </div>
+      </div>
+
+      <div class="category-card card-trace" onclick="startGame('trace')">
+        <div class="category-icon">🎨</div>
+        <div class="category-info">
+          <h2>Tập Tô Số</h2>
+          <p>Dùng tay tô màu theo nét số</p>
+        </div>
+      </div>
+    </div>
+
+    <button class="pill-btn" id="menu-lang-btn" onclick="toggleLang()" style="padding: 10px 20px; font-size: 15px;">
+      Ngôn ngữ: 🇻🇳 Tiếng Việt
+    </button>
   </div>
 
-  <footer id="bottom-bar">
-    <div class="bottom-group">
-      <button class="stepper-btn" id="prev-page-btn">◀</button>
-      <button class="stepper-btn" id="next-page-btn">▶</button>
+  <!-- ==================== 2. MÀN HÌNH CHƠI (ĐỌC & TÔ) ==================== -->
+  <div id="game-screen" class="screen hidden">
+    <div class="top-bar">
+      <button class="pill-btn" onclick="goHome()">🏠 Menu</button>
+      <button class="pill-btn" id="lang-btn" onclick="toggleLang()">🇻🇳 Tiếng Việt</button>
+      <button class="pill-btn" id="mode-btn" onclick="toggleOrderMode()">Tuần tự</button>
+      <div class="score-badge">⭐ <span id="score">0</span></div>
     </div>
 
-    <select id="font-select">
-      <option value="sans-serif">Không chân</option>
-      <option value="Georgia, serif">Georgia</option>
-      <option value="Merriweather, serif">Merriweather</option>
-      <option value="monospace">Máy chữ</option>
-    </select>
-
-    <div class="bottom-group">
-      <button class="stepper-btn" id="font-dec">A−</button>
-      <span id="font-size-text" style="font-size: 12px; font-weight: 600; min-width: 34px; text-align: center;">100%</span>
-      <button class="stepper-btn" id="font-inc">A+</button>
-    </div>
-  </footer>
-
-  <div id="toc-overlay"></div>
-  <aside id="toc-sidebar">
-    <div class="toc-header">
-      <span>Mục lục cuốn sách</span>
-      <span id="close-toc" style="cursor: pointer; padding: 4px 8px;">✕</span>
-    </div>
-    <ul id="toc-list">
-      <li style="padding: 16px; font-size: 13px; color: #888;">Đang tải mục lục...</li>
-    </ul>
-  </aside>
-
-  <div id="translate-popup">
-    <div class="popup-header">
-      <span>Dịch & Giải nghĩa Slang</span>
-      <span id="close-popup" style="cursor: pointer; padding: 0 4px; font-size: 16px;">✕</span>
-    </div>
-    <div class="popup-body">
-      <div id="selected-text-preview" style="font-style: italic; color: #9ca3af; margin-bottom: 8px;"></div>
-      <div id="translation-output" style="white-space: pre-line;"></div>
-    </div>
-  </div>
-
-  <div id="settings-modal">
-    <div class="modal-box">
-      <h3 style="font-size: 15px;">Cài đặt API AI</h3>
-      <div class="form-group">
-        <label>Dịch vụ:</label>
-        <select id="ai-provider">
-          <option value="openai">OpenAI (ChatGPT)</option>
-          <option value="gemini">Google Gemini</option>
-        </select>
+    <div class="card-container">
+      <!-- Khung hiển thị khi ở chế độ Đọc Số / Chữ -->
+      <div class="display-card" id="display-card">
+        <div id="target-char">0</div>
+        <div id="char-word">KHÔNG</div>
       </div>
-      <div class="form-group" id="openai-key-group">
-        <label>OpenAI Key:</label>
-        <input type="password" id="openai-key" placeholder="sk-...">
+
+      <!-- Khung hiển thị khi ở chế độ Tập Tô Số -->
+      <div id="trace-wrapper" class="hidden" style="display:flex; flex-direction:column; align-items:center;">
+        <div class="trace-board" id="trace-board">
+          <canvas id="trace-canvas" width="264" height="264"></canvas>
+        </div>
+        <div class="progress-bar-wrap">
+          <div id="trace-progress"></div>
+        </div>
       </div>
-      <div class="form-group" id="gemini-key-group" style="display: none;">
-        <label>Gemini Key:</label>
-        <input type="password" id="gemini-key" placeholder="AIzaSy...">
-      </div>
-      <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
-        <button class="stepper-btn" id="cancel-settings">Đóng</button>
-        <button class="stepper-btn" id="save-settings" style="background: var(--accent-color); color: white; border: none;">Lưu</button>
-      </div>
+
+      <div class="feedback-box" id="feedback">Bấm Micro và đọc to nhé!</div>
+    </div>
+
+    <div class="controls">
+      <button class="action-btn" onclick="speakCurrentItem()" title="Nghe đọc mẫu">🔊</button>
+      <!-- Nút Mic (hiện khi học đọc) -->
+      <button class="mic-btn" id="mic-btn" onclick="toggleListening()" title="Bấm để nói">🎤</button>
+      <!-- Nút Xóa tô lại (hiện khi tập tô) -->
+      <button class="mic-btn hidden" id="clear-trace-btn" onclick="resetTraceCanvas()" style="background:#FF9F43; box-shadow: 0 10px 25px rgba(255,159,67,0.4);" title="Tô lại">🔄</button>
+      <button class="action-btn" onclick="nextItem(false)" title="Tiếp theo">⏭️</button>
     </div>
   </div>
 
   <script>
-    let book = null;
-    let rendition = null;
-    let isPageLocked = false;
-    let isSelecting = false;
+    // ==================== DỮ LIỆU SỐ (0 - 10) ====================
+    const NUMBERS_DATA = [
+      { char: "0", vi: ["không", "số không", "0"], en: ["zero", "oh", "0"], labelVi: "KHÔNG", labelEn: "ZERO" },
+      { char: "1", vi: ["một", "số một", "mốt", "1"], en: ["one", "won", "1"], labelVi: "MỘT", labelEn: "ONE" },
+      { char: "2", vi: ["hai", "số hai", "2"], en: ["two", "to", "too", "2"], labelVi: "HAI", labelEn: "TWO" },
+      { char: "3", vi: ["ba", "số ba", "3"], en: ["three", "tree", "free", "3"], labelVi: "BA", labelEn: "THREE" },
+      { char: "4", vi: ["bốn", "số bốn", "tư", "4"], en: ["four", "for", "4"], labelVi: "BỐN", labelEn: "FOUR" },
+      { char: "5", vi: ["năm", "số năm", "lăm", "5"], en: ["five", "5"], labelVi: "NĂM", labelEn: "FIVE" },
+      { char: "6", vi: ["sáu", "số sáu", "xấu", "6"], en: ["six", "6"], labelVi: "SÁU", labelEn: "SIX" },
+      { char: "7", vi: ["bảy", "số bảy", "bẩy", "7"], en: ["seven", "7"], labelVi: "BẢY", labelEn: "SEVEN" },
+      { char: "8", vi: ["tám", "số tám", "8"], en: ["eight", "ate", "8"], labelVi: "TÁM", labelEn: "EIGHT" },
+      { char: "9", vi: ["chín", "số chín", "9"], en: ["nine", "9"], labelVi: "CHÍN", labelEn: "NINE" },
+      { char: "10", vi: ["mười", "số mười", "10"], en: ["ten", "10"], labelVi: "MƯỜI", labelEn: "TEN" }
+    ];
 
-    let currentFontSize = parseInt(localStorage.getItem('reader_font_size') || '100', 10);
-    let currentFontFamily = localStorage.getItem('reader_font_family') || 'sans-serif';
+    // ==================== DỮ LIỆU CHỮ CÁI TIẾNG VIỆT ====================
+    const LETTERS_VI = [
+      { char: "A", accept: ["a", "chữ a", "ha"], label: "A", speak: "a" },
+      { char: "Ă", accept: ["ă", "á", "chữ á", "chữ ă"], label: "Á", speak: "á" },
+      { char: "Â", accept: ["â", "ớ", "chữ ớ", "chữ â"], label: "Ớ", speak: "ớ" },
+      { char: "B", accept: ["b", "bờ", "bê", "chữ b", "chữ bờ", "chữ bê", "bố", "ba"], label: "BỜ / BÊ", speak: "bờ" },
+      { char: "C", accept: ["c", "cờ", "xê", "chữ c", "chữ cờ", "chữ xê", "cá"], label: "CỜ / XÊ", speak: "cờ" },
+      { char: "D", accept: ["d", "dờ", "dê", "chữ d", "chữ dờ", "chữ dê"], label: "DỜ / DÊ", speak: "dờ" },
+      { char: "Đ", accept: ["đ", "đờ", "đê", "chữ đ", "chữ đờ", "chữ đê"], label: "ĐỜ / ĐÊ", speak: "đờ" },
+      { char: "E", accept: ["e", "chữ e", "em"], label: "E", speak: "e" },
+      { char: "Ê", accept: ["ê", "chữ ê"], label: "Ê", speak: "ê" },
+      { char: "G", accept: ["g", "gờ", "giê", "chữ g", "chữ gờ", "gà"], label: "GỜ", speak: "gờ" },
+      { char: "H", accept: ["h", "hờ", "hắt", "chữ h", "chữ hờ", "chữ hắt"], label: "HỜ / HẮT", speak: "hờ" },
+      { char: "I", accept: ["i", "y", "i ngắn", "chữ i"], label: "I (NGẮN)", speak: "i" },
+      { char: "K", accept: ["k", "ca", "ka", "cờ", "chữ k", "chữ ca"], label: "CA", speak: "ca" },
+      { char: "L", accept: ["l", "lờ", "e lờ", "chữ l", "chữ lờ"], label: "LỜ", speak: "lờ" },
+      { char: "M", accept: ["m", "mờ", "em mờ", "chữ m", "chữ mờ", "mẹ"], label: "MỜ", speak: "mờ" },
+      { char: "N", accept: ["n", "nờ", "en nờ", "chữ n", "chữ nờ"], label: "NỜ", speak: "nờ" },
+      { char: "O", accept: ["o", "chữ o", "ò"], label: "O", speak: "o" },
+      { char: "Ô", accept: ["ô", "chữ ô"], label: "Ô", speak: "ô" },
+      { char: "Ơ", accept: ["ơ", "chữ ơ"], label: "Ơ", speak: "ơ" },
+      { char: "P", accept: ["p", "pờ", "pê", "bê", "chữ p", "chữ pờ"], label: "PỜ / PÊ", speak: "pờ" },
+      { char: "Q", accept: ["q", "quờ", "quy", "cu", "chữ q", "chữ quy"], label: "QUỜ / QUY", speak: "quy" },
+      { char: "R", accept: ["r", "rờ", "e rờ", "chữ r", "chữ rờ"], label: "RỜ", speak: "rờ" },
+      { char: "S", accept: ["s", "sờ", "ét sờ", "xờ", "chữ s", "chữ sờ"], label: "SỜ", speak: "sờ" },
+      { char: "T", accept: ["t", "tờ", "tê", "chữ t", "chữ tờ", "chữ tê"], label: "TỜ / TÊ", speak: "tờ" },
+      { char: "U", accept: ["u", "chữ u"], label: "U", speak: "u" },
+      { char: "Ư", accept: ["ư", "chữ ư"], label: "Ư", speak: "ư" },
+      { char: "V", accept: ["v", "vờ", "vê", "chữ v", "chữ vờ", "chữ vê"], label: "VỜ / VÊ", speak: "vờ" },
+      { char: "X", accept: ["x", "xờ", "ích xì", "sờ", "chữ x", "chữ xờ"], label: "XỜ", speak: "xờ" },
+      { char: "Y", accept: ["y", "i dài", "y dài", "i", "chữ y"], label: "Y (DÀI)", speak: "y dài" }
+    ];
 
-    const fileInput = document.getElementById('epub-file-input');
-    const pageLockBtn = document.getElementById('page-lock-btn');
-    const toastMsg = document.getElementById('toast-msg');
-    const prevPageBtn = document.getElementById('prev-page-btn');
-    const nextPageBtn = document.getElementById('next-page-btn');
-    const popup = document.getElementById('translate-popup');
-    const closePopupBtn = document.getElementById('close-popup');
-    const textPreview = document.getElementById('selected-text-preview');
-    const translationOutput = document.getElementById('translation-output');
-    const themeBtn = document.getElementById('theme-btn');
-    const settingsBtn = document.getElementById('settings-btn');
-    const settingsModal = document.getElementById('settings-modal');
-    const saveSettingsBtn = document.getElementById('save-settings');
-    const cancelSettingsBtn = document.getElementById('cancel-settings');
-    const aiProviderSelect = document.getElementById('ai-provider');
-    const geminiKeyInput = document.getElementById('gemini-key');
-    const openaiKeyInput = document.getElementById('openai-key');
-    const geminiGroup = document.getElementById('gemini-key-group');
-    const openaiGroup = document.getElementById('openai-key-group');
-    const fontSelect = document.getElementById('font-select');
-    const fontDec = document.getElementById('font-dec');
-    const fontInc = document.getElementById('font-inc');
-    const fontSizeText = document.getElementById('font-size-text');
-    const tocBtn = document.getElementById('toc-btn');
-    const tocSidebar = document.getElementById('toc-sidebar');
-    const tocOverlay = document.getElementById('toc-overlay');
-    const closeTocBtn = document.getElementById('close-toc');
-    const tocList = document.getElementById('toc-list');
+    // ==================== DỮ LIỆU CHỮ CÁI TIẾNG ANH ====================
+    const LETTERS_EN = [
+      { char: "A", accept: ["a", "ay", "hey"], label: "AY", speak: "a" },
+      { char: "B", accept: ["b", "bee", "be"], label: "BEE", speak: "b" },
+      { char: "C", accept: ["c", "see", "sea"], label: "CEE", speak: "c" },
+      { char: "D", accept: ["d", "dee"], label: "DEE", speak: "d" },
+      { char: "E", accept: ["e", "ee", "he"], label: "EE", speak: "e" },
+      { char: "F", accept: ["f", "ef"], label: "EF", speak: "f" },
+      { char: "G", accept: ["g", "gee"], label: "GEE", speak: "g" },
+      { char: "H", accept: ["h", "aitch", "age"], label: "AITCH", speak: "h" },
+      { char: "I", accept: ["i", "eye", "hi"], label: "EYE", speak: "i" },
+      { char: "J", accept: ["j", "jay"], label: "JAY", speak: "j" },
+      { char: "K", accept: ["k", "kay", "okay"], label: "KAY", speak: "k" },
+      { char: "L", accept: ["l", "el"], label: "EL", speak: "l" },
+      { char: "M", accept: ["m", "em", "am"], label: "EM", speak: "m" },
+      { char: "N", accept: ["n", "en", "and", "in"], label: "EN", speak: "n" },
+      { char: "O", accept: ["o", "oh"], label: "OH", speak: "o" },
+      { char: "P", accept: ["p", "pee", "pea"], label: "PEE", speak: "p" },
+      { char: "Q", accept: ["q", "cue", "queue", "you"], label: "CUE", speak: "q" },
+      { char: "R", accept: ["r", "ar", "are"], label: "AR", speak: "r" },
+      { char: "S", accept: ["s", "ess", "yes"], label: "ESS", speak: "s" },
+      { char: "T", accept: ["t", "tee", "tea"], label: "TEE", speak: "t" },
+      { char: "U", accept: ["u", "you"], label: "YOU", speak: "u" },
+      { char: "V", accept: ["v", "vee", "we"], label: "VEE", speak: "v" },
+      { char: "W", accept: ["w", "double u", "double you"], label: "DOUBLE-U", speak: "w" },
+      { char: "X", accept: ["x", "ex"], label: "EX", speak: "x" },
+      { char: "Y", accept: ["y", "why"], label: "WHY", speak: "y" },
+      { char: "Z", accept: ["z", "zee", "zed"], label: "ZEE", speak: "z" }
+    ];
 
-    function showToast(text) {
-      toastMsg.textContent = text;
-      toastMsg.classList.add('show');
-      setTimeout(() => toastMsg.classList.remove('show'), 1400);
+    const COLORS = ["#FF5E7E", "#FF9F43", "#2ED573", "#1E90FF", "#A55EEA", "#FF4757", "#00D2D3"];
+
+    let currentCategory = 'numbers'; // 'numbers' | 'letters' | 'trace'
+    let currentLang = 'vi';
+    let isRandomOrder = false;
+    let currentIndex = 0;
+    let score = 0;
+    let isListening = false;
+    let autoContinue = false;
+
+    function getActiveList() {
+      if (currentCategory === 'numbers' || currentCategory === 'trace') return NUMBERS_DATA;
+      return currentLang === 'vi' ? LETTERS_VI : LETTERS_EN;
     }
 
-    pageLockBtn.addEventListener('click', () => {
-      isPageLocked = !isPageLocked;
-      if (isPageLocked) {
-        pageLockBtn.textContent = '🔒';
-        pageLockBtn.classList.add('locked');
-        showToast('Đã KHÓA vuốt lật trang');
+    // ==================== CHUYỂN MÀN HÌNH ====================
+    function startGame(category) {
+      currentCategory = category;
+      currentIndex = 0;
+      stopMicrophone();
+
+      document.getElementById('menu-screen').classList.add('hidden');
+      document.getElementById('game-screen').classList.remove('hidden');
+
+      if (category === 'trace') {
+        document.getElementById('display-card').classList.add('hidden');
+        document.getElementById('trace-wrapper').classList.remove('hidden');
+        document.getElementById('mic-btn').classList.add('hidden');
+        document.getElementById('clear-trace-btn').classList.remove('hidden');
+        updateFeedback(currentLang === 'vi' ? "Dùng ngón tay tô kín nét số nhé!" : "Trace the number with your finger!");
       } else {
-        pageLockBtn.textContent = '🔓';
-        pageLockBtn.classList.remove('locked');
-        showToast('Đã MỞ vuốt lật trang');
+        document.getElementById('display-card').classList.remove('hidden');
+        document.getElementById('trace-wrapper').classList.add('hidden');
+        document.getElementById('mic-btn').classList.remove('hidden');
+        document.getElementById('clear-trace-btn').classList.add('hidden');
+        updateFeedback(currentLang === 'vi' ? "Bấm Micro và đọc to nhé!" : "Tap Mic and read aloud!");
       }
-    });
 
-    prevPageBtn.addEventListener('click', () => rendition && rendition.prev());
-    nextPageBtn.addEventListener('click', () => rendition && rendition.next());
+      renderCard();
+    }
 
-    // 1. IndexedDB
-    function openDB() {
-      return new Promise((resolve, reject) => {
-        const req = indexedDB.open('EpubReaderDB', 1);
-        req.onupgradeneeded = (e) => {
-          const db = e.target.result;
-          if (!db.objectStoreNames.contains('books')) db.createObjectStore('books', { keyPath: 'id' });
-        };
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => reject(req.error);
+    function goHome() {
+      stopMicrophone();
+      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+      document.getElementById('game-screen').classList.add('hidden');
+      document.getElementById('menu-screen').classList.remove('hidden');
+    }
+
+    // Hàm tắt hoàn toàn Micro (dùng khi bấm Loa hoặc thoát ra Menu)
+    function stopMicrophone() {
+      autoContinue = false;
+      if (recognition && isListening) {
+        try { recognition.stop(); } catch (e) {}
+      }
+      isListening = false;
+      document.getElementById('mic-btn').classList.remove('listening');
+    }
+
+    // ==================== NHẬN DIỆN GIỌNG NÓI ====================
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition = null;
+
+    if (SpeechRecognition) {
+      recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = true;
+
+      recognition.onstart = () => {
+        isListening = true;
+        document.getElementById('mic-btn').classList.add('listening');
+        updateFeedback(currentLang === 'vi' ? "Đang nghe bé đọc..." : "Listening...");
+      };
+
+      recognition.onresult = (event) => {
+        let transcript = "";
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript;
+        }
+        transcript = transcript.toLowerCase().trim();
+        updateFeedback(`🗣️ "${transcript}"`);
+
+        if (checkAnswer(transcript)) {
+          recognition.stop();
+          handleCorrectAnswer(true);
+        }
+      };
+
+      recognition.onerror = (event) => {
+        if (event.error === 'no-speech') {
+          updateFeedback(currentLang === 'vi' ? "Chưa nghe rõ, bé đọc to hơn nhé!" : "Speak louder please!");
+        } else if (event.error === 'not-allowed') {
+          updateFeedback("⚠️ Vui lòng cấp quyền Micro cho ứng dụng!");
+          autoContinue = false;
+        }
+      };
+
+      recognition.onend = () => {
+        isListening = false;
+        document.getElementById('mic-btn').classList.remove('listening');
+        if (autoContinue && currentCategory !== 'trace') {
+          setTimeout(() => {
+            if (!isListening && autoContinue) {
+              try { recognition.start(); } catch(e) {}
+            }
+          }, 600);
+        }
+      };
+    }
+
+    function checkAnswer(spokenText) {
+      const list = getActiveList();
+      const item = list[currentIndex];
+      const validWords = currentCategory === 'numbers'
+        ? (currentLang === 'vi' ? item.vi : item.en)
+        : item.accept;
+
+      return validWords.some(word => {
+        const regex = new RegExp(`(^|\\s)${word}($|\\s|[.,!?])`, 'i');
+        return regex.test(spokenText) || spokenText === word;
       });
     }
 
-    async function saveBookToDB(fileName, buffer) {
-      const db = await openDB();
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction('books', 'readwrite');
-        tx.objectStore('books').put({ id: 'last_book', name: fileName, data: buffer });
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error);
-      });
+    function handleCorrectAnswer(restartMicAfter) {
+      autoContinue = false;
+      score += 10;
+      document.getElementById('score').innerText = score;
+
+      const card = currentCategory === 'trace'
+        ? document.getElementById('trace-board')
+        : document.getElementById('display-card');
+
+      card.classList.add('pop');
+      playSuccessSound();
+      fireConfetti();
+
+      updateFeedback(currentLang === 'vi' ? "🎉 Giỏi quá! Chính xác!" : "🎉 Awesome! Correct!");
+
+      setTimeout(() => {
+        card.classList.remove('pop');
+        nextItem(true);
+        if (restartMicAfter && currentCategory !== 'trace') {
+          autoContinue = true;
+          try { recognition.start(); } catch(e) {}
+        }
+      }, 1500);
     }
 
-    async function loadLastBookFromDB() {
-      const db = await openDB();
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction('books', 'readonly');
-        const req = tx.objectStore('books').get('last_book');
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => reject(req.error);
-      });
+    function nextItem(fromCorrect) {
+      const list = getActiveList();
+      if (!isRandomOrder) {
+        currentIndex = (currentIndex + 1) % list.length;
+      } else {
+        let next;
+        do { next = Math.floor(Math.random() * list.length); } while (next === currentIndex && list.length > 1);
+        currentIndex = next;
+      }
+      renderCard();
+      if (!fromCorrect) {
+        if (currentCategory === 'trace') {
+          updateFeedback(currentLang === 'vi' ? "Bé tô số mới này nhé!" : "Trace this number!");
+        } else {
+          updateFeedback(currentLang === 'vi' ? "Bé đọc thẻ mới này nhé!" : "Read this one!");
+        }
+      }
     }
 
-    // 2. Mục lục
-    function buildTOC(tocItems) {
-      tocList.innerHTML = '';
-      if (!tocItems || tocItems.length === 0) {
-        tocList.innerHTML = '<li style="padding: 16px; font-size: 13px; color: #888;">Không có mục lục.</li>';
+    function renderCard() {
+      const list = getActiveList();
+      if (currentIndex >= list.length) currentIndex = 0;
+      const item = list[currentIndex];
+
+      if (currentCategory === 'trace') {
+        setupTraceNumber(item.char, COLORS[currentIndex % COLORS.length]);
+      } else {
+        const charEl = document.getElementById('target-char');
+        const wordEl = document.getElementById('char-word');
+
+        charEl.innerText = item.char;
+        charEl.style.color = COLORS[currentIndex % COLORS.length];
+
+        if (currentCategory === 'numbers') {
+          wordEl.innerText = currentLang === 'vi' ? item.labelVi : item.labelEn;
+        } else {
+          wordEl.innerText = item.label;
+        }
+      }
+    }
+
+    function toggleListening() {
+      if (!recognition) {
+        updateFeedback("⚠️ Thiết bị chưa hỗ trợ nhận diện giọng nói.");
         return;
       }
-      function appendItem(item) {
-        const li = document.createElement('li');
-        li.className = 'toc-item';
-        li.textContent = item.label ? item.label.trim() : 'Chương không tên';
-        li.addEventListener('click', () => {
-          if (rendition) {
-            rendition.display(item.href);
-            closeTOC();
-          }
-        });
-        tocList.appendChild(li);
-        if (item.subitems && item.subitems.length > 0) item.subitems.forEach(appendItem);
-      }
-      tocItems.forEach(appendItem);
-    }
-
-    function openTOC() { tocSidebar.classList.add('open'); tocOverlay.style.display = 'block'; }
-    function closeTOC() { tocSidebar.classList.remove('open'); tocOverlay.style.display = 'none'; }
-    tocBtn.addEventListener('click', openTOC);
-    closeTocBtn.addEventListener('click', closeTOC);
-    tocOverlay.addEventListener('click', closeTOC);
-
-    // 3. XỬ LÝ CẢM ỨNG & CHỐNG TRÔI KHI BÔI ĐEN
-    let touchStartX = 0;
-    let touchStartY = 0;
-    let touchStartTime = 0;
-
-    function attachTouchHandlers(contents) {
-      const doc = contents.document;
-      const win = contents.window;
-      let savedScrollLeft = 0;
-
-      // Ghi nhớ đúng vị trí trang hiện tại trước khi chạm
-      doc.addEventListener('touchstart', (e) => {
-        if (e.touches && e.touches.length > 1) return;
-        const touch = e.touches ? e.touches[0] : e;
-        touchStartX = touch.screenX;
-        touchStartY = touch.screenY;
-        touchStartTime = Date.now();
-        isSelecting = false;
-
-        // Lưu vị trí khung nhìn của trang đang đọc
-        const container = doc.scrollingElement || doc.documentElement || doc.body;
-        savedScrollLeft = container ? container.scrollLeft : win.scrollX;
-      }, { passive: true });
-
-      // Khi người dùng bắt đầu bôi đen chữ: giữ nguyên vị trí trang đó, không cho Android tự cuộn lệch
-      doc.addEventListener('selectionchange', () => {
-        const sel = win.getSelection();
-        if (sel && sel.toString().trim().length > 0) {
-          isSelecting = true;
-          const container = doc.scrollingElement || doc.documentElement || doc.body;
-          if (container && container.scrollLeft !== savedScrollLeft) {
-            container.scrollLeft = savedScrollLeft;
-          }
-        }
-      });
-
-      doc.addEventListener('touchend', (e) => {
-        if (isPageLocked) return;
-
-        const sel = win.getSelection();
-        if (isSelecting || (sel && sel.toString().trim().length > 0)) {
-          return;
-        }
-
-        const duration = Date.now() - touchStartTime;
-        if (duration > 350) return;
-
-        const touch = e.changedTouches ? e.changedTouches[0] : e;
-        const diffX = touch.screenX - touchStartX;
-        const diffY = touch.screenY - touchStartY;
-
-        if (Math.abs(diffX) > 55 && Math.abs(diffX) > Math.abs(diffY) * 1.4) {
-          if (diffX < 0) {
-            rendition && rendition.next();
-          } else {
-            rendition && rendition.prev();
-          }
-        }
-      }, { passive: true });
-    }
-
-    // 4. Render Sách
-    function displayBookData(buffer, title, initialLocation = null) {
-      if (book) book.destroy();
-
-      book = ePub(buffer);
-      rendition = book.renderTo("viewer", {
-        width: "100%",
-        height: "100%",
-        spread: "none",
-        flow: "paginated",
-        manager: "default"
-      });
-
-      if (initialLocation) rendition.display(initialLocation);
-      else rendition.display();
-
-      applyEpubTheme(document.body.getAttribute('data-theme'));
-      book.loaded.navigation.then(nav => buildTOC(nav.toc));
-
-      rendition.on('relocated', (loc) => {
-        if (loc && loc.start && loc.start.cfi) {
-          localStorage.setItem('last_book_cfi', loc.start.cfi);
-        }
-      });
-
-      rendition.hooks.content.register((contents) => {
-        attachTouchHandlers(contents);
-      });
-
-      rendition.on("selected", function (cfiRange, contents) {
-        book.getRange(cfiRange).then(function (range) {
-          if (!range) return;
-          const text = range.toString().trim();
-          if (text.length > 0) {
-            showTranslatePopup(text);
-
-            // Xóa vùng chọn sau khi đã lấy được chữ để tắt menu hệ thống Android, tránh xô trang
-            setTimeout(() => {
-              try {
-                if (contents && contents.window && contents.window.getSelection) {
-                  contents.window.getSelection().removeAllRanges();
-                }
-              } catch (err) {}
-            }, 100);
-          }
-        });
-      });
-    }
-
-    fileInput.addEventListener('change', function (e) {
-      const file = e.target.files[0];
-      if (!file) return;
-      const title = file.name.replace('.epub', '');
-      const reader = new FileReader();
-      reader.onload = async function (ev) {
-        const buf = ev.target.result;
-        await saveBookToDB(title, buf);
-        localStorage.removeItem('last_book_cfi');
-        displayBookData(buf, title);
-      };
-      reader.readAsArrayBuffer(file);
-    });
-
-    // 5. Typography & Theme
-    function applyTypography() {
-      if (!rendition) return;
-      rendition.themes.fontSize(`${currentFontSize}%`);
-      rendition.themes.font(currentFontFamily);
-    }
-
-    fontSelect.addEventListener('change', (e) => {
-      currentFontFamily = e.target.value;
-      localStorage.setItem('reader_font_family', currentFontFamily);
-      applyTypography();
-    });
-
-    fontDec.addEventListener('click', () => {
-      if (currentFontSize > 60) {
-        currentFontSize -= 10;
-        fontSizeText.textContent = `${currentFontSize}%`;
-        localStorage.setItem('reader_font_size', currentFontSize);
-        applyTypography();
-      }
-    });
-
-    fontInc.addEventListener('click', () => {
-      if (currentFontSize < 250) {
-        currentFontSize += 10;
-        fontSizeText.textContent = `${currentFontSize}%`;
-        localStorage.setItem('reader_font_size', currentFontSize);
-        applyTypography();
-      }
-    });
-
-    function applyEpubTheme(theme) {
-      if (!rendition) return;
-      if (theme === 'dark') {
-        rendition.themes.override('color', '#d1d5db');
-        rendition.themes.override('background', '#121212');
+      if (isListening) {
+        stopMicrophone();
+        updateFeedback(currentLang === 'vi' ? "Đã tắt Micro. Bấm 🎤 để bật lại." : "Mic off. Tap 🎤 to start.");
       } else {
-        rendition.themes.override('color', '#2b2b2b');
-        rendition.themes.override('background', '#f7f6f2');
-      }
-      applyTypography();
-    }
-
-    themeBtn.addEventListener('click', () => {
-      const cur = document.body.getAttribute('data-theme');
-      const next = cur === 'dark' ? 'light' : 'dark';
-      document.body.setAttribute('data-theme', next);
-      localStorage.setItem('app_theme', next);
-      themeBtn.textContent = next === 'dark' ? '☀️' : '🌙';
-      applyEpubTheme(next);
-    });
-
-    // 6. Settings & API Dịch
-    function loadSettings() {
-      const provider = localStorage.getItem('ai_provider') || 'openai';
-      aiProviderSelect.value = provider;
-      geminiKeyInput.value = localStorage.getItem('gemini_api_key') || '';
-      openaiKeyInput.value = localStorage.getItem('openai_api_key') || '';
-      toggleKeyInputs(provider);
-
-      const savedTheme = localStorage.getItem('app_theme') || 'dark';
-      document.body.setAttribute('data-theme', savedTheme);
-      themeBtn.textContent = savedTheme === 'dark' ? '☀️' : '🌙';
-
-      fontSelect.value = currentFontFamily;
-      fontSizeText.textContent = `${currentFontSize}%`;
-    }
-
-    function toggleKeyInputs(provider) {
-      if (provider === 'gemini') {
-        geminiGroup.style.display = 'flex';
-        openaiGroup.style.display = 'none';
-      } else {
-        geminiGroup.style.display = 'none';
-        openaiGroup.style.display = 'flex';
+        if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+        autoContinue = true;
+        recognition.lang = currentLang === 'vi' ? 'vi-VN' : 'en-US';
+        try { recognition.start(); } catch(e) {}
       }
     }
 
-    aiProviderSelect.addEventListener('change', (e) => toggleKeyInputs(e.target.value));
-    settingsBtn.addEventListener('click', () => settingsModal.style.display = 'flex');
-    cancelSettingsBtn.addEventListener('click', () => settingsModal.style.display = 'none');
-    saveSettingsBtn.addEventListener('click', () => {
-      localStorage.setItem('ai_provider', aiProviderSelect.value);
-      localStorage.setItem('gemini_api_key', geminiKeyInput.value.trim());
-      localStorage.setItem('openai_api_key', openaiKeyInput.value.trim());
-      settingsModal.style.display = 'none';
-    });
+    // YÊU CẦU 1: Khi bật phát âm (🔊) thì ghi âm tự động tắt hẳn, muốn ghi âm lại thì bấm lại nút Mic
+    function speakCurrentItem() {
+      const wasListening = isListening || autoContinue;
+      stopMicrophone();
 
-    function showTranslatePopup(text) {
-      textPreview.textContent = `"${text.length > 50 ? text.substring(0, 50) + '...' : text}"`;
-      translationOutput.textContent = "Đang tra cứu từ lóng & ngữ cảnh...";
-      popup.style.display = 'flex';
-      fetchTranslation(text);
-    }
+      if (currentCategory !== 'trace' && wasListening) {
+        updateFeedback(currentLang === 'vi' ? "🔊 Đang đọc mẫu (Bấm 🎤 để đọc lại)" : "🔊 Speaking (Tap 🎤 to speak)");
+      }
 
-    closePopupBtn.addEventListener('click', () => popup.style.display = 'none');
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const list = getActiveList();
+        const item = list[currentIndex];
+        let textToSpeak = "";
 
-    async function fetchTranslation(text) {
-      const provider = localStorage.getItem('ai_provider') || 'openai';
-      const prompt = `Bạn là chuyên gia ngôn ngữ và dịch thuật văn học sang tiếng Việt.
-Phân tích đoạn text tiếng Anh sau (chú trọng slang/thành ngữ/cách nói tự nhiên):
-"${text}"
-
-Cấu trúc trả lời ngắn gọn:
-1. Dịch nghĩa ngữ cảnh (bản dịch mượt).
-2. Giải thích Slang / Thành ngữ (nếu có).`;
-
-      try {
-        if (provider === 'gemini') {
-          const key = localStorage.getItem('gemini_api_key');
-          if (!key) throw new Error("Chưa nhập Gemini Key.");
-          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-          });
-          const data = await res.json();
-          if (data.error) throw new Error(data.error.message);
-          translationOutput.textContent = data.candidates[0].content.parts[0].text;
+        if (currentCategory === 'numbers' || currentCategory === 'trace') {
+          textToSpeak = currentLang === 'vi' ? item.labelVi.toLowerCase() : item.labelEn.toLowerCase();
         } else {
-          const key = localStorage.getItem('openai_api_key');
-          if (!key) throw new Error("Chưa nhập OpenAI Key.");
-          const res = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${key}`
-            },
-            body: JSON.stringify({
-              model: 'gpt-4o-mini',
-              messages: [{ role: 'user', content: prompt }],
-              temperature: 0.3
-            })
-          });
-          const data = await res.json();
-          if (data.error) throw new Error(data.error.message);
-          translationOutput.textContent = data.choices[0].message.content;
+          textToSpeak = item.speak;
         }
-      } catch (err) {
-        translationOutput.innerHTML = `<span style="color: #ef4444; font-size: 13px;">⚠️ ${err.message}</span>`;
+
+        const utterance = new SpeechSynthesisUtterance(textToSpeak);
+        utterance.lang = currentLang === 'vi' ? 'vi-VN' : 'en-US';
+        utterance.rate = 0.85;
+        window.speechSynthesis.speak(utterance);
       }
     }
 
-    loadSettings();
-
-    window.addEventListener('DOMContentLoaded', async () => {
-      try {
-        const cachedBook = await loadLastBookFromDB();
-        if (cachedBook && cachedBook.data) {
-          const savedCfi = localStorage.getItem('last_book_cfi');
-          displayBookData(cachedBook.data, cachedBook.name, savedCfi);
-        }
-      } catch (err) {
-        console.warn('Chưa có sách cache:', err);
+    function toggleLang() {
+      currentLang = currentLang === 'vi' ? 'en' : 'vi';
+      const label = currentLang === 'vi' ? '🇻🇳 Tiếng Việt' : '🇺🇸 English';
+      document.getElementById('lang-btn').innerText = label;
+      document.getElementById('menu-lang-btn').innerText = "Ngôn ngữ: " + label;
+      currentIndex = 0;
+      stopMicrophone();
+      renderCard();
+      if (recognition) {
+        recognition.lang = currentLang === 'vi' ? 'vi-VN' : 'en-US';
       }
-    });
+    }
+
+    function toggleOrderMode() {
+      isRandomOrder = !isRandomOrder;
+      document.getElementById('mode-btn').innerText = isRandomOrder ? "Ngẫu nhiên" : "Tuần tự";
+    }
+
+    function updateFeedback(text) {
+      document.getElementById('feedback').innerText = text;
+    }
+
+    // ==================== YÊU CẦU 2: LOGIC TẬP TÔ SỐ (TRACING) ====================
+    const traceCanvas = document.getElementById('trace-canvas');
+    const tCtx = traceCanvas.getContext('2d', { willReadFrequently: true });
+
+    // Tạo 2 canvas ẩn để làm khuôn chấm điểm và lưu nét vẽ của bé
+    const maskCanvas = document.createElement('canvas');
+    maskCanvas.width = 264;
+    maskCanvas.height = 264;
+    const mCtx = maskCanvas.getContext('2d', { willReadFrequently: true });
+
+    const drawCanvas = document.createElement('canvas');
+    drawCanvas.width = 264;
+    drawCanvas.height = 264;
+    const dCtx = drawCanvas.getContext('2d', { willReadFrequently: true });
+
+    let isDrawing = false;
+    let traceCompleted = false;
+    let currentBrushColor = "#FF5E7E";
+    let targetMaskIndices = [];
+    let lastPt = null;
+
+    function setupTraceNumber(numStr, color) {
+      currentBrushColor = color;
+      traceCompleted = false;
+      document.getElementById('trace-progress').style.width = '0%';
+
+      const w = traceCanvas.width;
+      const h = traceCanvas.height;
+
+      mCtx.clearRect(0, 0, w, h);
+      dCtx.clearRect(0, 0, w, h);
+
+      // Cỡ chữ nhỏ hơn một chút nếu là số "10" có 2 chữ số
+      const fontSize = numStr.length > 1 ? 165 : 210;
+      const fontSpec = `900 ${fontSize}px "Segoe UI", Arial, sans-serif`;
+
+      mCtx.font = fontSpec;
+      mCtx.textAlign = 'center';
+      mCtx.textBaseline = 'middle';
+      mCtx.fillStyle = '#000000';
+      mCtx.fillText(numStr, w / 2, h / 2 + 8);
+
+      // Lấy danh sách các điểm ảnh thuộc về con số để chấm phần trăm hoàn thành
+      const imgData = mCtx.getImageData(0, 0, w, h).data;
+      targetMaskIndices = [];
+      for (let i = 3; i < imgData.length; i += 16) { // Lấy mẫu cách quãng để mượt trên điện thoại
+        if (imgData[i] > 128) {
+          targetMaskIndices.push(i);
+        }
+      }
+
+      renderTraceComposite(numStr, fontSpec);
+    }
+
+    function resetTraceCanvas() {
+      const list = getActiveList();
+      const item = list[currentIndex];
+      setupTraceNumber(item.char, COLORS[currentIndex % COLORS.length]);
+      updateFeedback(currentLang === 'vi' ? "Đã xóa! Bé tô lại số này nhé!" : "Cleared! Trace again!");
+    }
+
+    function renderTraceComposite(numStr, fontSpec) {
+      const w = traceCanvas.width;
+      const h = traceCanvas.height;
+      tCtx.clearRect(0, 0, w, h);
+
+      // 1. Vẽ nền con số màu xám nhạt làm khuôn
+      tCtx.font = fontSpec;
+      tCtx.textAlign = 'center';
+      tCtx.textBaseline = 'middle';
+      tCtx.fillStyle = '#E8ECEF';
+      tCtx.fillText(numStr, w / 2, h / 2 + 8);
+
+      // 2. Chỉ hiển thị màu bút của bé nằm gọn bên trong lòng con số (cực đẹp và sạch)
+      tCtx.save();
+      tCtx.drawImage(maskCanvas, 0, 0);
+      tCtx.globalCompositeOperation = 'source-in';
+      tCtx.drawImage(drawCanvas, 0, 0);
+      tCtx.restore();
+
+      // 3. Vẽ thêm nét mờ nơi ngón tay bé vừa đi qua bên ngoài để bé dễ nhìn vị trí tay
+      tCtx.save();
+      tCtx.globalAlpha = 0.25;
+      tCtx.drawImage(drawCanvas, 0, 0);
+      tCtx.restore();
+
+      // 4. Vẽ đường viền nét đứt xung quanh số để dẫn hướng
+      tCtx.save();
+      tCtx.font = fontSpec;
+      tCtx.textAlign = 'center';
+      tCtx.textBaseline = 'middle';
+      tCtx.strokeStyle = '#CED4DA';
+      tCtx.lineWidth = 3;
+      tCtx.setLineDash([8, 6]);
+      tCtx.strokeText(numStr, w / 2, h / 2 + 8);
+      tCtx.restore();
+    }
+
+    function getPointerPos(e) {
+      const rect = traceCanvas.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      return {
+        x: (clientX - rect.left) * (traceCanvas.width / rect.width),
+        y: (clientY - rect.top) * (traceCanvas.height / rect.height)
+      };
+    }
+
+    function startDraw(e) {
+      if (currentCategory !== 'trace' || traceCompleted) return;
+      isDrawing = true;
+      lastPt = getPointerPos(e);
+      drawStroke(lastPt);
+    }
+
+    function moveDraw(e) {
+      if (!isDrawing || currentCategory !== 'trace' || traceCompleted) return;
+      e.preventDefault();
+      const pt = getPointerPos(e);
+      drawStroke(pt);
+      lastPt = pt;
+    }
+
+    function endDraw() {
+      if (!isDrawing) return;
+      isDrawing = false;
+      lastPt = null;
+      checkTraceProgress();
+    }
+
+    function drawStroke(pt) {
+      dCtx.lineCap = 'round';
+      dCtx.lineJoin = 'round';
+      dCtx.strokeStyle = currentBrushColor;
+      dCtx.lineWidth = 42; // Đầu bút to cho ngón tay trẻ nhỏ dễ tô
+
+      dCtx.beginPath();
+      if (lastPt) {
+        dCtx.moveTo(lastPt.x, lastPt.y);
+        dCtx.lineTo(pt.x, pt.y);
+      } else {
+        dCtx.moveTo(pt.x, pt.y);
+        dCtx.lineTo(pt.x + 0.1, pt.y + 0.1);
+      }
+      dCtx.stroke();
+
+      const item = getActiveList()[currentIndex];
+      const fontSize = item.char.length > 1 ? 165 : 210;
+      const fontSpec = `900 ${fontSize}px "Segoe UI", Arial, sans-serif`;
+      renderTraceComposite(item.char, fontSpec);
+    }
+
+    function checkTraceProgress() {
+      if (traceCompleted || targetMaskIndices.length === 0) return;
+
+      const drawData = dCtx.getImageData(0, 0, drawCanvas.width, drawCanvas.height).data;
+      let filledCount = 0;
+
+      for (let i = 0; i < targetMaskIndices.length; i++) {
+        if (drawData[targetMaskIndices[i]] > 50) {
+          filledCount++;
+        }
+      }
+
+      // Quy đổi sang thang 100% (chỉ cần bé tô phủ được 78% diện tích nét số là đạt 100%)
+      const rawRatio = filledCount / targetMaskIndices.length;
+      const percent = Math.min(100, Math.round((rawRatio / 0.78) * 100));
+      document.getElementById('trace-progress').style.width = percent + '%';
+
+      if (percent >= 100) {
+        traceCompleted = true;
+        speakCurrentItem(); // Đọc vang tên số khi bé tô xong
+        handleCorrectAnswer(false);
+      } else if (percent > 30) {
+        updateFeedback(currentLang === 'vi' ? `Đạt ${percent}% rồi, tô nốt phần còn trống nhé!` : `${percent}% done, keep going!`);
+      }
+    }
+
+    traceCanvas.addEventListener('mousedown', startDraw);
+    traceCanvas.addEventListener('mousemove', moveDraw);
+    window.addEventListener('mouseup', endDraw);
+
+    traceCanvas.addEventListener('touchstart', startDraw, { passive: false });
+    traceCanvas.addEventListener('touchmove', moveDraw, { passive: false });
+    window.addEventListener('touchend', endDraw);
+
+    // ==================== ÂM THANH & PHÁO GIẤY ====================
+    function playSuccessSound() {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const notes = [523.25, 659.25, 783.99, 1046.50];
+      notes.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.08);
+        gain.gain.setValueAtTime(0.2, ctx.currentTime + idx * 0.08);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.08 + 0.3);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(ctx.currentTime + idx * 0.08);
+        osc.stop(ctx.currentTime + idx * 0.08 + 0.3);
+      });
+    }
+
+    const canvas = document.getElementById('confetti-canvas');
+    const cCtx = canvas.getContext('2d');
+    let particles = [];
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    function fireConfetti() {
+      for (let i = 0; i < 60; i++) {
+        particles.push({
+          x: canvas.width / 2,
+          y: canvas.height / 2,
+          vx: (Math.random() - 0.5) * 16,
+          vy: (Math.random() - 0.7) * 16,
+          size: Math.random() * 8 + 4,
+          color: COLORS[Math.floor(Math.random() * COLORS.length)],
+          alpha: 1
+        });
+      }
+    }
+
+    function animateConfetti() {
+      cCtx.clearRect(0, 0, canvas.width, canvas.height);
+      particles.forEach((p, i) => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.4;
+        p.alpha -= 0.015;
+        cCtx.globalAlpha = Math.max(0, p.alpha);
+        cCtx.fillStyle = p.color;
+        cCtx.fillRect(p.x, p.y, p.size, p.size);
+        if (p.alpha <= 0) particles.splice(i, 1);
+      });
+      requestAnimationFrame(animateConfetti);
+    }
+    animateConfetti();
   </script>
 </body>
 </html>
